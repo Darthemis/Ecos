@@ -66,6 +66,16 @@ body {
   pointer-events: none;
 }
 
+.ecos-look-mode {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #4d5460;
+  pointer-events: none;
+}
+
 .ecos-diagnostics {
   position: absolute;
   left: 18px;

@@ -68,11 +68,15 @@ Requer Node 20 ou superior. Abra o endereço que o `npm run dev` imprimir e cliq
 
 | Tecla | Ação |
 | --- | --- |
-| `W` `A` `S` `D` ou setas | caminhar |
-| mouse | olhar (após clicar na tela) |
+| `W` `A` `S` `D` | caminhar |
+| mouse | olhar — clique para capturar o ponteiro |
+| clicar, segurar e arrastar | olhar quando a captura não é permitida (touchpad, página incorporada) |
+| setas | girar e inclinar o olhar, sem apontador |
 | `1` `2` `3` | alcance visual de 8, 15 ou 25 metros |
 | `V` | alterna entre os três alcances |
-| `Esc` | libera o mouse |
+| `Esc` | libera o ponteiro |
+
+Um texto discreto no canto inferior direito diz qual caminho de visada está ativo. As setas **não** caminham: caminhar é sempre WASD.
 
 ### Diagnóstico
 

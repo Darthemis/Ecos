@@ -1,15 +1,38 @@
-// Entrada: mapeia teclado e mouse para intencoes. Nao altera o mundo
+// Entrada: mapeia teclado, mouse e touchpad para intencoes. Nao altera o mundo
 // diretamente (AGENT_RULES §5).
+//
+// Olhar tem tres caminhos, em ordem de preferencia. O primeiro que o ambiente
+// permitir e o que vale; os outros continuam disponiveis:
+//
+//   1. ponteiro capturado — mouse livre, sem limite de borda;
+//   2. clicar, segurar e arrastar — funciona no touchpad e dentro de um quadro
+//      incorporado, onde a captura costuma ser bloqueada;
+//   3. setas do teclado — gira e inclina sem depender de apontador algum.
+//
+// Por isso as setas deixaram de ser atalho de caminhada: caminhar e sempre WASD.
 
 import { clampAxis, type FrameIntent } from "./intent";
 
+/** Radianos por pixel de deslocamento do apontador. */
 const LOOK_SENSITIVITY = 0.0022;
+
+// Radianos por segundo com a seta mantida pressionada. O giro e mais rapido que
+// a inclinacao: o pitch percorre apenas 85 graus ate o limite, e uma taxa alta
+// levava ao zenite — tela inteiramente preta — em menos de um segundo.
+const KEY_YAW_RATE = 1.05;
+const KEY_PITCH_RATE = 0.62;
 
 export type InputCommand = "cycleRange" | "range8" | "range15" | "range25" | "toggleDiagnostics" | "toggleRawScene";
 
+/** Como o jogador olhou por ultimo. Serve a indicacao na tela. */
+export type LookMode = "pointerLock" | "drag" | "keys" | "idle";
+
 export type InputSource = {
   /** Consome a intencao do quadro e zera o acumulo de visada. */
-  takeIntent: () => FrameIntent;
+  takeIntent: (deltaSeconds: number) => FrameIntent;
+  lookMode: () => LookMode;
+  /** Falso quando o ambiente recusou a captura do ponteiro. */
+  pointerLockAvailable: () => boolean;
   onCommand: (handler: (command: InputCommand) => void) => void;
   onFirstGesture: (handler: () => void) => void;
   dispose: () => void;
@@ -24,13 +47,24 @@ const COMMAND_KEYS: Record<string, InputCommand> = {
   F4: "toggleRawScene",
 };
 
+const TURN_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
+
 export function createInputSource(target: HTMLElement): InputSource {
   const pressed = new Set<string>();
   const commandHandlers: ((command: InputCommand) => void)[] = [];
   const gestureHandlers: (() => void)[] = [];
+
   let gestureFired = false;
   let yawDelta = 0;
   let pitchDelta = 0;
+  let lockAvailable = true;
+  let dragging = false;
+  let dragPointer: number | null = null;
+  let lastX = 0;
+  let lastY = 0;
+  let mode: LookMode = "idle";
+
+  const locked = () => document.pointerLockElement === target;
 
   const fireGesture = () => {
     if (gestureFired) return;
@@ -46,6 +80,8 @@ export function createInputSource(target: HTMLElement): InputSource {
       for (const handler of commandHandlers) handler(command);
       return;
     }
+    // As setas rolariam a pagina dentro de um quadro incorporado.
+    if (TURN_KEYS.has(event.code)) event.preventDefault();
     pressed.add(event.code);
   };
 
@@ -53,23 +89,87 @@ export function createInputSource(target: HTMLElement): InputSource {
     pressed.delete(event.code);
   };
 
-  const onPointerDown = () => {
+  const onPointerDown = (event: PointerEvent) => {
     fireGesture();
-    if (document.pointerLockElement !== target) void target.requestPointerLock();
+
+    if (locked()) return;
+
+    // Tenta a captura; se o ambiente recusar, o arrasto assume daqui em diante.
+    if (lockAvailable) {
+      const request = target.requestPointerLock() as unknown;
+      if (request instanceof Promise) {
+        request.catch(() => {
+          lockAvailable = false;
+        });
+      }
+    }
+
+    dragging = true;
+    dragPointer = event.pointerId;
+    lastX = event.clientX;
+    lastY = event.clientY;
+
+    // A captura do ponteiro so ajuda a nao perder o arrasto ao sair do elemento;
+    // ela falha se a captura do mouse tiver vencido a corrida, e o arrasto
+    // funciona sem ela porque pointermove escuta na janela.
+    try {
+      target.setPointerCapture(event.pointerId);
+    } catch {
+      /* sem captura: o arrasto continua valendo */
+    }
+  };
+
+  const endDrag = (event: PointerEvent) => {
+    if (dragPointer !== event.pointerId) return;
+    dragging = false;
+    dragPointer = null;
+    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
   };
 
   const onPointerMove = (event: PointerEvent) => {
-    if (document.pointerLockElement !== target) return;
-    yawDelta += event.movementX * LOOK_SENSITIVITY;
-    pitchDelta += event.movementY * LOOK_SENSITIVITY;
+    if (locked()) {
+      yawDelta += event.movementX * LOOK_SENSITIVITY;
+      pitchDelta += event.movementY * LOOK_SENSITIVITY;
+      mode = "pointerLock";
+      return;
+    }
+
+    if (!dragging || dragPointer !== event.pointerId) return;
+
+    yawDelta += (event.clientX - lastX) * LOOK_SENSITIVITY;
+    pitchDelta += (event.clientY - lastY) * LOOK_SENSITIVITY;
+    lastX = event.clientX;
+    lastY = event.clientY;
+    mode = "drag";
   };
 
-  const onBlur = () => pressed.clear();
+  const onLockChange = () => {
+    if (locked()) {
+      // Com o ponteiro capturado o arrasto perde sentido.
+      dragging = false;
+      dragPointer = null;
+      mode = "pointerLock";
+    }
+  };
+
+  const onLockError = () => {
+    lockAvailable = false;
+  };
+
+  const onBlur = () => {
+    pressed.clear();
+    dragging = false;
+    dragPointer = null;
+  };
 
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("blur", onBlur);
   window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", endDrag);
+  window.addEventListener("pointercancel", endDrag);
+  document.addEventListener("pointerlockchange", onLockChange);
+  document.addEventListener("pointerlockerror", onLockError);
   target.addEventListener("pointerdown", onPointerDown);
 
   const axis = (positive: string[], negative: string[]): number => {
@@ -80,17 +180,31 @@ export function createInputSource(target: HTMLElement): InputSource {
   };
 
   return {
-    takeIntent() {
+    takeIntent(deltaSeconds) {
+      const turn = axis(["ArrowRight"], ["ArrowLeft"]);
+      const tilt = axis(["ArrowDown"], ["ArrowUp"]);
+      if (turn !== 0 || tilt !== 0) {
+        yawDelta += turn * KEY_YAW_RATE * deltaSeconds;
+        pitchDelta += tilt * KEY_PITCH_RATE * deltaSeconds;
+        mode = "keys";
+      }
+
       const intent: FrameIntent = {
         move: {
-          forward: axis(["KeyW", "ArrowUp"], ["KeyS", "ArrowDown"]),
-          strafe: axis(["KeyD", "ArrowRight"], ["KeyA", "ArrowLeft"]),
+          forward: axis(["KeyW"], ["KeyS"]),
+          strafe: axis(["KeyD"], ["KeyA"]),
         },
         look: { yaw: yawDelta, pitch: pitchDelta },
       };
       yawDelta = 0;
       pitchDelta = 0;
       return intent;
+    },
+    lookMode() {
+      return mode;
+    },
+    pointerLockAvailable() {
+      return lockAvailable;
     },
     onCommand(handler) {
       commandHandlers.push(handler);
@@ -103,6 +217,10 @@ export function createInputSource(target: HTMLElement): InputSource {
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      document.removeEventListener("pointerlockchange", onLockChange);
+      document.removeEventListener("pointerlockerror", onLockError);
       target.removeEventListener("pointerdown", onPointerDown);
     },
   };

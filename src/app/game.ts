@@ -3,7 +3,7 @@
 
 import { NearestFilter, WebGLRenderer, WebGLRenderTarget } from "three";
 import { planSteps, TICK_SECONDS } from "../core/fixed-step";
-import { createInputSource } from "../core/input";
+import { createInputSource, type LookMode } from "../core/input";
 import { createPresenceAudio } from "../audio/presence-audio";
 import { createDiagnosticsOverlay, DIAGNOSTICS_ENABLED } from "../diagnostics/overlay";
 import { Metrics } from "../diagnostics/metrics";
@@ -38,8 +38,14 @@ export function startGame(root: HTMLElement): Game {
 
   const hint = document.createElement("div");
   hint.className = "ecos-hint";
-  hint.textContent = "clique para ouvir e olhar · WASD anda · 1 2 3 alcance";
+  hint.textContent = "clique para ouvir e olhar · WASD anda · setas olham · 1 2 3 alcance";
   root.appendChild(hint);
+
+  // Indicacao discreta de qual caminho de visada esta em uso. O jogador nao
+  // deve precisar adivinhar por que o olhar responde de um jeito ou de outro.
+  const lookBadge = document.createElement("div");
+  lookBadge.className = "ecos-look-mode";
+  root.appendChild(lookBadge);
 
   const renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(1);
@@ -137,7 +143,7 @@ export function startGame(root: HTMLElement): Game {
     const plan = planSteps(accumulator);
     accumulator = plan.carry;
 
-    const intent = input.takeIntent();
+    const intent = input.takeIntent(deltaSeconds);
     const simStart = performance.now();
     state = advance(state, intent, plan.ticks);
     metrics.recordSim(performance.now() - simStart, plan.ticks, plan.dropped);
@@ -159,6 +165,8 @@ export function startGame(root: HTMLElement): Game {
     const contact = radarContact(state);
     radar.draw(state.player.yaw, contact, elapsed);
     audio.update(state.player.position, state.player.yaw, state.presence.position);
+
+    lookBadge.textContent = describeLookMode(input.lookMode(), input.pointerLockAvailable());
 
     if (labelTimer > 0) {
       labelTimer -= deltaSeconds;
@@ -190,6 +198,22 @@ export function startGame(root: HTMLElement): Game {
       renderer.dispose();
     },
   };
+}
+
+/** Texto curto do indicador de controle. */
+function describeLookMode(mode: LookMode, lockAvailable: boolean): string {
+  switch (mode) {
+    case "pointerLock":
+      return "olhar: mouse capturado · esc solta";
+    case "drag":
+      return "olhar: arraste · setas tambem olham";
+    case "keys":
+      return "olhar: setas";
+    default:
+      return lockAvailable
+        ? "olhar: clique e arraste, ou use as setas"
+        : "olhar: arraste ou setas · captura indisponivel aqui";
+  }
 }
 
 export { TICK_SECONDS };
