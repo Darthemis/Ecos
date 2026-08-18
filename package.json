@@ -1,0 +1,24 @@
+{
+  "name": "ecos",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Ecos do Ultimo Eon - simulacao de historias emergentes em primeira pessoa",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest run",
+    "build": "tsc --noEmit && vite build",
+    "simulate": "tsx tools/simulate.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.11"
+  }
+}
