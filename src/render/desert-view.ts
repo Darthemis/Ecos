@@ -26,14 +26,51 @@ import type { ObstacleKind } from "../world/geometry";
 import { PLAYER_EYE_HEIGHT } from "../sim/state";
 
 const KIND_COLOR: Record<ObstacleKind, number> = {
-  rock: 0x9aa0a8,
-  ruin: 0xd6cdb4,
-  monolith: 0x7f93a6,
+  rock: 0xa8aeb6,
+  ruin: 0xe2d9bf,
+  monolith: 0x8b9fb2,
 };
 
-const SAND_COLOR = 0xc79a5c;
+const SAND_COLOR = 0x94703f;
 
-/** Ruido do solo. Sem granulacao o chao vira um campo uniforme de glifos. */
+/** Lado do ladrilho de areia, em metros. Define o tamanho das manchas no chao. */
+const SAND_TILE_METERS = 24;
+
+/** Ruido em grade, interpolado. Estavel no mundo: nao cintila ao caminhar. */
+function latticeNoise(size: number, cells: number, seed: number): Float32Array {
+  const rng = createRng(seed);
+  const lattice = new Float32Array((cells + 1) * (cells + 1));
+  for (let i = 0; i < lattice.length; i += 1) lattice[i] = rng();
+
+  const at = (cx: number, cy: number): number =>
+    lattice[(cy % (cells + 1)) * (cells + 1) + (cx % (cells + 1))] ?? 0;
+
+  const out = new Float32Array(size * size);
+  const scale = cells / size;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const fx = x * scale;
+      const fy = y * scale;
+      const x0 = Math.floor(fx);
+      const y0 = Math.floor(fy);
+      const tx = fx - x0;
+      const ty = fy - y0;
+      // Suavizacao cubica: evita as arestas retas da interpolacao linear.
+      const sx = tx * tx * (3 - 2 * tx);
+      const sy = ty * ty * (3 - 2 * ty);
+      const top = at(x0, y0) * (1 - sx) + at(x0 + 1, y0) * sx;
+      const bottom = at(x0, y0 + 1) * (1 - sx) + at(x0 + 1, y0 + 1) * sx;
+      out[y * size + x] = top * (1 - sy) + bottom * sy;
+    }
+  }
+  return out;
+}
+
+/**
+ * Textura do solo. Duas oitavas: manchas largas que abrem clareiras escuras no
+ * chao e um grao fino por cima. As clareiras existem para que o piso proximo
+ * nao vire uma folha continua de glifos — o preto tambem faz parte do chao.
+ */
 function createSandTexture(): Texture {
   const size = 128;
   const canvas = document.createElement("canvas");
@@ -43,10 +80,15 @@ function createSandTexture(): Texture {
   const ctx = canvas.getContext("2d");
   if (ctx === null) throw new Error("Contexto 2D indisponivel para a textura do solo");
 
-  const rng = createRng(SCENE_SEED);
+  const coarse = latticeNoise(size, 12, SCENE_SEED);
+  const fine = latticeNoise(size, 48, SCENE_SEED + 977);
+
   const image = ctx.createImageData(size, size);
   for (let i = 0; i < size * size; i += 1) {
-    const value = 150 + rng() * 105;
+    const mixed = (coarse[i] ?? 0) * 0.74 + (fine[i] ?? 0) * 0.26;
+    // Expoente maior joga mais area para o escuro: as clareiras precisam cair
+    // abaixo do primeiro degrau da rampa para virarem preto de verdade.
+    const value = 8 + Math.pow(mixed, 1.7) * 247;
     image.data[i * 4] = value;
     image.data[i * 4 + 1] = value;
     image.data[i * 4 + 2] = value;
@@ -57,7 +99,8 @@ function createSandTexture(): Texture {
   const texture = new CanvasTexture(canvas);
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.repeat.set(GROUND_HALF_EXTENT / 1.5, GROUND_HALF_EXTENT / 1.5);
+  const tiles = (GROUND_HALF_EXTENT * 2) / SAND_TILE_METERS;
+  texture.repeat.set(tiles, tiles);
   return texture;
 }
 
@@ -94,11 +137,11 @@ export function createDesertView(): DesertView {
     scene.add(mesh);
   }
 
-  scene.add(new AmbientLight(0x4a5570, 0.9));
+  scene.add(new AmbientLight(0x4a5570, 0.58));
 
   // Luz presa ao olhar: o alcance visual passa a ser algo que se ve, nao apenas
   // um valor. Sem ela a nevoa preta corta a cena sem gradiente de proximidade.
-  const carried = new PointLight(0xffe6c2, 6.5, 20, 1.25);
+  const carried = new PointLight(0xffe6c2, 6.5, 20, 1.6);
   carried.position.set(0, 0, 0);
   camera.add(carried);
   scene.add(camera);
@@ -113,7 +156,7 @@ export function createDesertView(): DesertView {
       camera.far = meters + 6;
       camera.updateProjectionMatrix();
       carried.distance = meters * 1.4;
-      carried.intensity = 5.5 + meters * 0.55;
+      carried.intensity = 6.5 + meters * 0.75;
     },
     dispose() {
       sand.dispose();
