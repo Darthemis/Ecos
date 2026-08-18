@@ -8,11 +8,11 @@
 
 ## FASE ATIVA
 
-**Fase 0 — Congelamento do contexto: concluída.**
+**Fase 1 — Prova perceptiva: concluída, aguardando avaliação humana.**
 
-A próxima é a **Fase 1 — Prova perceptiva** (Plano §7), que só começa após avaliação humana. Nada de sistema de jogo entra no repositório antes disso.
+O que existe hoje: caminhar em primeira pessoa por um trecho fixo de deserto, visto em ASCII colorido sobre fundo preto, com alcance visual de 8, 15 ou 25 metros, radar/bússola verde, uma presença sonora móvel em áudio espacial e medição separada de simulação e renderização.
 
-O que existe hoje: os documentos canônicos, o protocolo de agentes, os quatro comandos do projeto e a menor aplicação possível — uma tela preta vazia. Não há câmera, ASCII, radar, cartas, simulação nem save.
+O que **não** existe: Cartas de Intenção, NPCs, memória causal, IA, inventário, Recomeço e as quatro telas. A Fase 2 não começa antes do marco humano (Plano §14): a legibilidade e a identidade visual são avaliadas jogando, não por relatório.
 
 ---
 
@@ -28,8 +28,9 @@ Leia nesta ordem antes de tocar em qualquer coisa:
 | `docs/DECISOES_FECHADAS.md` | Índice das decisões que ninguém altera silenciosamente. |
 | `docs/EXPERIMENTOS_ABERTOS.md` | O que ainda será decidido por protótipo ou playtest. |
 | `docs/CHANGELOG_DESIGN.md` | Registro de toda alteração de design. |
+| `docs/DECISOES_TECNICAS.md` | Escolhas de implementação e alternativas descartadas. |
 
-Os dois documentos canônicos são verificados por hash em `tests/canonical-baseline.test.ts`. Editá-los quebra os testes de propósito: alterar a visão exige o rito descrito em `AGENT_RULES.md`, não um `git commit`.
+Os documentos canônicos são verificados por hash em `tests/canonical-baseline.test.ts`. Editá-los quebra os testes de propósito: alterar a visão exige o rito descrito em `AGENT_RULES.md`, não um `git commit`.
 
 ---
 
@@ -54,14 +55,33 @@ Looter shooter com filtro ASCII; deckbuilder com cartas separadas do mundo; miss
 ## Comandos
 
 ```bash
-npm install     # instala dependências
-npm run dev     # servidor de desenvolvimento
-npm run test    # testes (Vitest)
-npm run build   # checagem de tipos + bundle de produção
-npm run simulate # ferramenta de simulação acelerada (stub na Fase 0)
+npm install      # instala dependências
+npm run dev      # servidor de desenvolvimento
+npm run test     # testes (Vitest)
+npm run build    # checagem de tipos + bundle de produção
+npm run simulate # ferramenta de simulação acelerada (stub até haver relógio)
 ```
 
-Requer Node 20 ou superior.
+Requer Node 20 ou superior. Abra o endereço que o `npm run dev` imprimir e clique na tela: o clique captura o mouse e libera o áudio, que o navegador não inicia sem um gesto.
+
+### Controles
+
+| Tecla | Ação |
+| --- | --- |
+| `W` `A` `S` `D` ou setas | caminhar |
+| mouse | olhar (após clicar na tela) |
+| `1` `2` `3` | alcance visual de 8, 15 ou 25 metros |
+| `V` | alterna entre os três alcances |
+| `Esc` | libera o mouse |
+
+### Diagnóstico
+
+Só existe em `npm run dev`. A construção de produção não contém esse código, portanto o jogador nunca o alcança.
+
+| Tecla | Ação |
+| --- | --- |
+| `F3` | métricas de simulação e renderização |
+| `F4` | modo 3D convencional, sem ASCII |
 
 ---
 
@@ -71,7 +91,14 @@ Existe hoje:
 
 ```text
 docs/            documentos canônicos e registros de design
-src/app/         inicialização da aplicação
+src/app/         inicialização e montagem do laço
+src/core/        passo fixo, intenções, entrada e gerador com seed
+src/sim/         estado do mundo e tick determinístico
+src/world/       geometria, colisão e percepção
+src/content/     a cena fixa do deserto, orientada a dados
+src/render/      cena Three.js, atlas de glifos, passe ASCII e radar
+src/audio/       presença sonora espacial
+src/diagnostics/ métricas e sobreposição (apenas em desenvolvimento)
 tests/           testes determinísticos
 tools/           ferramentas de simulação e diagnóstico
 ```
@@ -79,16 +106,10 @@ tools/           ferramentas de simulação e diagnóstico
 Prevista pelo Plano §5.2, criada quando a fase correspondente exigir — não antes:
 
 ```text
-src/core/        relógio, seed, eventos, comandos e determinismo
-src/sim/         agentes, corpo, relações, necessidades e resolução
-src/world/       terreno, biomas, ruínas, perigos e materialização
 src/narrative/   memória causal, histórias, vestígios e heranças
 src/cards/       geração, validação e resolução de intenções
-src/render/      geometria interna e conversão visual para ASCII
-src/audio/       áudio espacial, sinais e percepção por som
 src/screens/     Jogo, Mapa, História e Eu
 src/ai/          adaptadores opcionais e validadores
-src/content/     definições orientadas por dados
 src/save/        schema, migrações e persistência
 ```
 

@@ -3,6 +3,7 @@
   "purpose": "Detecta alteracao silenciosa dos documentos canonicos. Verificado por tests/canonical-baseline.test.ts.",
   "files": {
     "docs/GDD_Ecos_v1.0.md": "0e4e734ccab4fa20b6ffbc4eaba6638f551c999cdabaede2df63f034115c268b",
-    "docs/PLANO_DE_ACAO_PROTOTIPO_ECOS_v1.0.md": "e42fdaa9fc2156e1ed178cf14f6d531613091a51ae6f8b6bb5a4e00230632505"
+    "docs/PLANO_DE_ACAO_PROTOTIPO_ECOS_v1.0.md": "e42fdaa9fc2156e1ed178cf14f6d531613091a51ae6f8b6bb5a4e00230632505",
+    "AGENT_RULES.md": "08544eacba0bde47b2fd7f87690582a664675d640c5f42e72e2694980e0e3bd3"
   }
 }

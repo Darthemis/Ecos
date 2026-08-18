@@ -23,9 +23,59 @@ body {
 }
 
 .ecos-root {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   height: 100%;
   background: #000;
+  cursor: crosshair;
+}
+
+.ecos-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ecos-radar {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  pointer-events: none;
+}
+
+.ecos-range {
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: #39ff88;
+  opacity: 0;
+  transition: opacity 240ms linear;
+  pointer-events: none;
+}
+
+.ecos-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 26px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: #5d6470;
+  pointer-events: none;
+}
+
+.ecos-diagnostics {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  padding: 10px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #7de3a8;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(57, 255, 136, 0.25);
+  white-space: pre;
+  pointer-events: none;
 }

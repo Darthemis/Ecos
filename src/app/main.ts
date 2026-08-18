@@ -1,4 +1,5 @@
 import "../style.css";
 import { bootstrap } from "./bootstrap";
+import { startGame } from "./game";
 
-bootstrap(document.querySelector<HTMLElement>("#app")!);
+startGame(bootstrap(document.querySelector<HTMLElement>("#app")!));

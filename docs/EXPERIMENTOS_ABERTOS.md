@@ -39,8 +39,10 @@ Um item desta lista é resolvido por protótipo ou playtest e, ao ser resolvido,
 Estes itens foram deliberadamente **não decididos** ao montar a base do projeto. Nenhum deles é uma decisão de design; todos são reversíveis.
 
 - **Linter e formatador.** Nenhum foi adotado. A escolha (ESLint, Biome, Prettier ou nada) fica para quando houver código suficiente para justificar a regra.
-- **Three.js e WebGL2.** O Plano §5.1 os prevê, mas a tela vazia da Fase 0 não os exige. A dependência entra na Fase 1, junto da primeira geometria.
+- ~~**Three.js e WebGL2.**~~ Resolvido na Fase 1: `three` entrou como dependência de runtime, com a cena convertida para ASCII por shader. Ver `DECISOES_TECNICAS.md`.
 - **Web Workers.** O GDD §25.1 os condiciona a medição. Só entram quando a medição justificar.
 - **Formato e migrações de save.** O Plano §5.3 exige versão e migrações desde o primeiro protótipo; o schema concreto nasce com o primeiro estado persistível (Fase 2).
-- **Fonte de glifos ASCII.** Atlas, shader ou elemento de texto — decisão da Fase 1, medida por legibilidade em movimento.
+- ~~**Fonte de glifos ASCII.**~~ Resolvido na Fase 1: atlas gerado em execução por Canvas2D, amostrado por shader. O **conjunto de caracteres** da rampa (` .:-=+*#%@`) e a **semântica das cores** continuam abertos — dependem de playtest humano.
+- **Calibração perceptiva.** Densidade do solo próximo, ganho da rampa, sensibilidade do mouse e alcance visual padrão foram escolhidos por inspeção em execução, não por playtest. São os primeiros candidatos a ajuste depois da avaliação humana da Fase 1.
+- **Consulta de tempo de GPU.** As métricas medem CPU. Se a renderização virar gargalo, medir GPU exige extensões de temporização do WebGL.
 - **Escopo real do comando `simulate`.** Hoje é um stub. Vira ferramenta de simulação acelerada quando existir relógio determinístico (Plano §5.2, `tools/`).

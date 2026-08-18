@@ -31,4 +31,12 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
-*Nenhuma até o momento. A linha de base canônica foi estabelecida sem alterar o GDD nem o Plano.*
+## 2026-08-18 — AGENT_RULES.md v1.1 passa a ser canônico
+
+- **Decisão afetada:** protocolo de agentes (não altera nenhuma decisão de `DECISOES_FECHADAS.md`)
+- **Antes:** `AGENT_RULES.md` derivado por agente a partir do Plano §4, na Fase 0.
+- **Depois:** `AGENT_RULES.md` v1.1, de autoria do responsável, substitui integralmente o anterior. Amplia as restrições criativas e sistêmicas, define contratos de memória causal, de IA generativa e de geometria generativa, e proíbe alterar documento canônico e hash na mesma mudança.
+- **Justificativa:** o arquivo derivado era um resumo operacional; a v1.1 é a fonte pretendida pelo responsável e já referencia os caminhos reais do repositório.
+- **Aprovação humana:** solicitada pelo responsável em 18/08/2026, que instruiu remover ambas as versões anteriores e enviou a v1.1.
+- **GDD atualizado:** não aplicável — o GDD e o Plano permanecem intactos.
+- **Impacto no código:** `AGENT_RULES.md` entrou em `docs/canonical-hashes.json` e voltou à lista de arquivos obrigatórios de `tests/canonical-baseline.test.ts`.
