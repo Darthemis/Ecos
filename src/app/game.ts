@@ -8,6 +8,11 @@ import { DEFAULT_COMFORT } from "../core/settings";
 import { createAmbience } from "../audio/ambience";
 import { ACTIVE_SCENE } from "../content/active-scene";
 import { createDiagnosticsOverlay, DIAGNOSTICS_ENABLED } from "../diagnostics/overlay";
+import {
+  applyDiagnosticCommand,
+  INITIAL_DIAGNOSTIC_STATE,
+  type DiagnosticState,
+} from "./diagnostic-commands";
 import { Metrics } from "../diagnostics/metrics";
 import { createRouteLog } from "../diagnostics/route-log";
 import { createRouteCanvas } from "../diagnostics/route-canvas";
@@ -18,12 +23,7 @@ import { createRadar } from "../render/radar";
 import { advance, createWorldState } from "../sim/world-sim";
 import { PLAYER_EYE_HEIGHT } from "../sim/state";
 import { segmentAt } from "../world/scene";
-import {
-  DEFAULT_ECHO_LEVEL,
-  ECHO_LEVELS,
-  nextEchoLevel,
-  type EchoLevel,
-} from "../world/contact-echo";
+import { ECHO_LEVELS } from "../world/contact-echo";
 import {
   DEFAULT_VISUAL_RANGE,
   nextVisualRange,
@@ -75,12 +75,7 @@ export function startGame(root: HTMLElement): Game {
   let columns = 2;
   let rows = 2;
   let visualRange: VisualRange = DEFAULT_VISUAL_RANGE;
-  let showRawScene = false;
-  let uniformProbe = false;
-  let worldLights = true;
-  let echoOn = true;
-  let echoLevel: EchoLevel = DEFAULT_ECHO_LEVEL;
-  let sectorDebug = false;
+  let diag: DiagnosticState = INITIAL_DIAGNOSTIC_STATE;
   let flickerReduced = DEFAULT_COMFORT.flickerReduced;
   let state = createWorldState();
   let accumulator = 0;
@@ -89,7 +84,16 @@ export function startGame(root: HTMLElement): Game {
   let running = true;
   let labelTimer = 0;
 
-  view.setEchoLevel(echoLevel);
+  // Aplica o estado inteiro, campo a campo. Nenhum campo pode ficar sem efeito
+  // por esquecimento: foi assim que `F5` deixou de funcionar na Fase 2.
+  const syncDiagnostics = () => {
+    view.setWorldLightsEnabled(diag.worldLights);
+    view.setEchoEnabled(diag.echo);
+    view.setEchoLevel(diag.echoLevel);
+    view.setSectorDebug(diag.sectorDebug);
+    routeCanvas?.setVisible(diag.sectorDebug);
+  };
+  syncDiagnostics();
 
   const applyVisualRange = (meters: VisualRange) => {
     visualRange = meters;
@@ -160,42 +164,21 @@ export function startGame(root: HTMLElement): Game {
       case "toggleDiagnostics":
         if (diagnostics !== null) diagnostics.setVisible(diagnostics.element.hidden);
         break;
-      case "toggleEcho":
-        if (DIAGNOSTICS_ENABLED) {
-          echoOn = !echoOn;
-          view.setEchoEnabled(echoOn);
-        }
-        break;
-      case "cycleEchoLevel":
-        if (DIAGNOSTICS_ENABLED) {
-          echoLevel = nextEchoLevel(echoLevel);
-          view.setEchoLevel(echoLevel);
-        }
-        break;
-      case "toggleSectorDebug":
-        if (DIAGNOSTICS_ENABLED) {
-          sectorDebug = !sectorDebug;
-          view.setSectorDebug(sectorDebug);
-          routeCanvas?.setVisible(sectorDebug);
-        }
-        break;
       case "exportRoute":
         // Exportação local: nada sai da máquina.
         if (DIAGNOSTICS_ENABLED) console.info(routeLog.toText());
-        break;
-      case "toggleUniformProbe":
-        if (DIAGNOSTICS_ENABLED) uniformProbe = !uniformProbe;
-        break;
-      case "toggleRawScene":
-        // Modo 3D convencional: diagnóstico apenas. Ausente da construção de
-        // produção, portanto nunca alcançável pelo jogador.
-        if (DIAGNOSTICS_ENABLED) showRawScene = !showRawScene;
         break;
       case "sensitivityDown":
       case "sensitivityUp":
         rangeLabel.textContent = `sensibilidade ${input.sensitivity().toFixed(1)}`;
         labelTimer = 1.6;
         break;
+    }
+
+    const proximo = applyDiagnosticCommand(diag, command, DIAGNOSTICS_ENABLED);
+    if (proximo !== diag) {
+      diag = proximo;
+      syncDiagnostics();
     }
   });
 
@@ -234,13 +217,13 @@ export function startGame(root: HTMLElement): Game {
     const sectors = view.update(elapsed, state.player.position);
 
     const renderStart = performance.now();
-    if (uniformProbe) {
+    if (diag.uniformProbe) {
       renderer.setRenderTarget(target);
       renderer.setClearColor(0x6a6a6a, 1);
       renderer.clear(true, true, false);
       renderer.setClearColor(0x000000, 1);
       ascii.render(renderer, target);
-    } else if (showRawScene) {
+    } else if (diag.rawScene) {
       renderer.setRenderTarget(null);
       renderer.render(view.scene, view.camera);
     } else {
@@ -272,10 +255,10 @@ export function startGame(root: HTMLElement): Game {
         trecho: segmentAt(ACTIVE_SCENE, state.player.position) ?? "fora",
         setores: `${sectors.active}/${sectors.total} · objetos ${sectors.objectsActive}/${sectors.objectsTotal}`,
         percurso: `${summary.distance.toFixed(0)} m · ${summary.seconds.toFixed(0)} s · hesitacoes ${summary.hesitations} · retornos ${summary.returns}`,
-        luzes: worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
-        eco: echoOn ? `${echoLevel} (${ECHO_LEVELS[echoLevel]})` : "desligado",
+        luzes: diag.worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
+        eco: diag.echo ? `${diag.echoLevel} (${ECHO_LEVELS[diag.echoLevel]})` : "desligado",
         conforto: `sensibilidade ${input.sensitivity().toFixed(1)} · cintilacao ${flickerReduced ? "reduzida" : "normal"}`,
-        modo: uniformProbe ? "ENTRADA UNIFORME" : showRawScene ? "3D CONVENCIONAL" : "ascii",
+        modo: diag.uniformProbe ? "ENTRADA UNIFORME" : diag.rawScene ? "3D CONVENCIONAL" : "ascii",
         audio: audio.isRunning() ? `ativo · ${audio.emitterCount()} emissores` : "aguardando gesto",
       });
     }

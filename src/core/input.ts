@@ -42,7 +42,8 @@ export type InputSource = {
   dispose: () => void;
 };
 
-const COMMAND_KEYS: Record<string, InputCommand> = {
+/** Exportado para que o teste prove que toda tecla mapeada tem efeito. */
+export const COMMAND_KEYS: Record<string, InputCommand> = {
   Digit1: "range8",
   Digit2: "range15",
   Digit3: "range25",
