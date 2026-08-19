@@ -249,3 +249,164 @@ verificado por teste que compara o estado com e sem registro.
 | `F10` | redução de cintilação (conforto, vale também no jogo normal) |
 | `F11` | exporta o percurso em texto no console |
 | `−` `=` | sensibilidade da visada (conforto, vale no jogo normal) |
+
+## Fase 2.1A — Legibilidade estrutural de volumes
+
+A Fase 2.1 monolítica (`c602cc2`, preservada em `archive/fase-2.1-monolitica`)
+alterou materiais, iluminação, continuidade horizontal, Eco, geometria e
+distribuição visual ao mesmo tempo. A implementação técnica passou; a leitura
+visual não foi aprovada, e a simultaneidade tornou impossível atribuir as
+regressões perceptivas a qualquer uma das mudanças. Por instrução humana de
+19/08/2026, a fase foi decomposta em experiências pequenas e isoladas. Esta é a
+primeira, e altera **apenas** a representação perceptiva da estrutura:
+silhueta, descontinuidade de profundidade, encontro de planos e canto.
+
+### A hipótese
+
+Numa cena muito escura, os volumes podem continuar discretos se a estrutura for
+ligeiramente mais perceptível que o interior das superfícies. A hierarquia
+pretendida, do sinal mais forte ao mais fraco:
+
+1. silhueta contra o vazio;
+2. sobreposição e descontinuidade de profundidade;
+3. aresta estrutural ou mudança importante de plano;
+4. canto, junção ou vértice;
+5. interior da superfície — inalterado nesta etapa.
+
+### A comparação exigida
+
+**Alternativa B — informação estrutural vinda da geometria.** Todos os volumes
+da rua são caixas. As arestas estruturais de uma caixa são conhecidas de
+antemão: bastaria levar a posição local ao fragmento e medir quantos dos três
+eixos normalizados estão próximos de 1 — dois eixos indicam aresta, três
+indicam canto. Custa um `varying`, nenhum passe, nenhuma chamada de desenho, e
+é perfeitamente estável no espaço do mundo.
+
+Recusada por três razões:
+
+- **não produz o sinal mais forte.** Silhueta contra o vazio e sobreposição de
+  profundidade são informação de ponto de vista; nenhuma delas existe no espaço
+  do objeto. Os dois níveis mais altos da hierarquia ficariam de fora.
+- **desenha arestas que não significam nada.** A aresta de uma caixa encoberta
+  por outra continuaria marcada, porque o objeto não sabe o que está à sua
+  frente.
+- **não sobrevive à geometria futura.** Funciona porque hoje tudo é caixa. Uma
+  forma qualquer exigiria um atributo de aresta pré-calculado por malha.
+
+**Alternativa A — detecção no espaço da tela, no passe ASCII.** O alvo de
+renderização já tem exatamente o tamanho da grade de glifos: um téxel é uma
+célula. Anexando uma textura de profundidade a esse mesmo alvo, o passe ASCII
+pode ler a profundidade da célula e das quatro vizinhas e derivar toda a
+hierarquia de uma única grandeza.
+
+O detalhe que decide a questão é **qual** grandeza. A profundidade linear em
+metros não serve: numa superfície plana vista de raspão a profundidade dispara
+entre células vizinhas. Com a câmera na altura dos olhos e a grade de 42 linhas,
+três linhas consecutivas de chão caem em 26,8 m, 17,9 m e 13,4 m — uma diferença
+relativa de 33% entre vizinhas, num plano onde não há estrutura nenhuma. Um
+detector de primeira diferença acenderia o chão inteiro perto do horizonte.
+
+O inverso da profundidade, porém, é **afim em coordenadas de tela sobre qualquer
+plano** — é a mesma propriedade que a rasterização usa para interpolar. Nas
+mesmas três linhas de chão o inverso vale 0,0373, 0,0559 e 0,0746: exatamente
+linear, segunda diferença nula. Então a grandeza é a segunda diferença
+normalizada do inverso da profundidade:
+
+```text
+q_x = ( 2·inv₀ − inv_esquerda − inv_direita ) / inv₀
+q_y = ( 2·inv₀ − inv_cima     − inv_baixo   ) / inv₀
+```
+
+- superfície plana, em qualquer inclinação: `q = 0`;
+- silhueta contra o vazio a 5 m, com corte da câmera em 220 m: `q ≈ 0,98`;
+- sobreposição de duas superfícies a meio metro uma da outra, a 5 m: `q ≈ 0,09`;
+- vinco entre dois planos: `q` pequeno, com sinal positivo se convexo e
+  negativo se côncavo.
+
+Uma única grandeza, portanto, separa os níveis 1, 2 e 3 apenas por magnitude, e
+o sinal de `q` diz de que lado do degrau está a célula — o reforço fica no corpo
+da frente, e não vira halo na superfície de trás. O nível 4 sai de graça: um
+canto é a célula em que **os dois eixos** respondem, enquanto uma aresta
+vertical responde só em `x`.
+
+### Decisão
+
+Escolhida a **alternativa A**, sem híbrido. Ela é a mais simples que produz a
+hierarquia inteira, e a comparação item a item favorece-a em quase tudo:
+
+| Critério | A — espaço de tela | B — geometria |
+| --- | --- | --- |
+| Passes novos | nenhum | nenhum |
+| Chamadas de desenho | nenhuma a mais | nenhuma a mais |
+| Textura adicional | uma, de profundidade, do tamanho da grade (160 × 42) | nenhuma |
+| Amostras por fragmento | 4 a mais | nenhuma |
+| Silhueta contra o vazio | sim | **não** |
+| Descontinuidade de profundidade | sim | **não** |
+| Encontro de planos | sim | sim |
+| Canto | sim | sim |
+| Oclusão respeitada | por construção: lê o que foi rasterizado | **não**: desenha aresta encoberta |
+| Revela triangulação | só em facetas com ângulo grande entre si | não |
+| Geometria futura | qualquer malha | só formas cujas arestas eu declare |
+| Estabilidade ao girar | a da própria grade ASCII | a da própria grade ASCII |
+| Ruído temporal | nenhum | nenhum |
+
+Nada de G-buffer, passe extra, sombra física, dependência nova ou
+pós-processamento temporal. A oclusão é gratuita: o que não foi rasterizado não
+está na profundidade, então nenhuma aresta atravessa parede, chão ou volume.
+
+**Risco assumido e registrado:** numa malha facetada, cada faceta é um vinco. O
+limiar do termo de vinco é alto o bastante para ignorar mudanças pequenas de
+plano, mas uma esfera de poucos segmentos ainda pode mostrar suas facetas. As
+duas geometrias complexas estão adiadas; quando voltarem, isto precisa ser
+reavaliado antes, não depois.
+
+### O que a implementação encontrou
+
+**Um defeito de faixa dinâmica, anterior a esta fase.** Metade das células que o
+detector marcava não mudava nada na imagem. A causa não era o detector: o alvo
+de renderização tem 8 bits e guarda **luz linear**, e este mundo vive quase todo
+abaixo de 1/255 em linear. Uma face sem fonte próxima chega ao alvo como zero
+exato — sem matiz, portanto sem nada que o reforço possa adensar. Medido na cena
+3D correspondente, a face frontal da rampa a 2 m vale 0,32 em 255.
+
+A correção **em escopo** foi dar matiz ao termo estrutural: a aresta herda a cor
+da parte iluminada mais próxima do mesmo corpo e, se o corpo inteiro estiver
+abaixo do piso, usa a cor da própria luz ambiente do lugar, calculada dos dados
+da cena. Em nenhum caso inventa cor. Isso levou as células detectadas e
+invisíveis de 54% para 32% nas cenas próximas; o resto é sinal fraco que
+arredonda para o mesmo glifo, o que é o comportamento pretendido.
+
+Aumentar a faixa dinâmica do alvo — meia precisão em vez de 8 bits — resolveria
+a raiz, mas mudaria **toda** a imagem, não só a estrutura. Fica registrado em
+`EXPERIMENTOS_ABERTOS.md` como experiência isolada própria, exatamente para não
+repetir o erro da Fase 2.1 monolítica.
+
+### Onde a conta é feita, e por quê
+
+O reforço depende só da célula, nunca do pixel dentro dela. Calculá-lo no passe
+ASCII repetia a mesma conta 8 × 14 vezes por célula: cerca de 3,7 milhões de
+leituras de profundidade por quadro. Medido em rasterização por software, isso
+custava 19% da taxa de quadros.
+
+Ele passou para um passe próprio na resolução da grade — 160 × 51, cerca de 40
+mil leituras — que guarda os três sinais nos canais R, G e B de um alvo do
+tamanho da grade. O passe ASCII faz **uma** leitura. Não é um G-buffer: não
+desenha a cena de novo, não acrescenta chamada de desenho alguma e o alvo é
+1/112 da área do quadro. Foi acrescentado para **reduzir** custo, não para
+acrescentar capacidade.
+
+A equivalência visual foi conferida por captura: a diferença entre as duas
+implementações fica dentro do ruído de captura entre execuções — as imagens de
+controle, sem reforço, que a mudança não pode afetar, já diferem entre execuções
+por 0,19% a 2,13% dos pixels.
+
+### Diagnósticos acrescentados
+
+| Tecla | Diagnóstico |
+| --- | --- |
+| `B` | liga e desliga o reforço estrutural — desligado é a saída visual da Fase 2 |
+| `N` | só a máscara estrutural, sem a cena por baixo |
+| `M` | isola a parte do sinal: tudo → silhueta e degrau → vinco e canto |
+
+`F4` (cena 3D convencional) e `F6` (entrada uniforme) continuam servindo de
+contraprova, e `F5` voltou a funcionar.

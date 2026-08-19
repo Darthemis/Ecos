@@ -1,7 +1,7 @@
 // Montagem do laço. Une entrada, simulação, percepção, renderização, áudio e
 // diagnóstico sem que nenhum deles conheça o outro diretamente.
 
-import { NearestFilter, WebGLRenderer, WebGLRenderTarget } from "three";
+import { DepthFormat, DepthTexture, NearestFilter, UnsignedIntType, WebGLRenderer, WebGLRenderTarget } from "three";
 import { planSteps, TICK_SECONDS } from "../core/fixed-step";
 import { createInputSource } from "../core/input";
 import { DEFAULT_COMFORT } from "../core/settings";
@@ -17,8 +17,9 @@ import { Metrics } from "../diagnostics/metrics";
 import { createRouteLog } from "../diagnostics/route-log";
 import { createRouteCanvas } from "../diagnostics/route-canvas";
 import { createAsciiPass } from "../render/ascii-pass";
+import { createStructurePass } from "../render/structure-pass";
 import { createSceneView } from "../render/scene-view";
-import { GLYPH_CELL_HEIGHT, GLYPH_CELL_WIDTH } from "../render/glyph-atlas";
+import { computeGrid } from "../render/grid";
 import { createRadar } from "../render/radar";
 import { advance, createWorldState } from "../sim/world-sim";
 import { PLAYER_EYE_HEIGHT } from "../sim/state";
@@ -61,6 +62,7 @@ export function startGame(root: HTMLElement): Game {
 
   const view = createSceneView(ACTIVE_SCENE);
   const ascii = createAsciiPass();
+  const structure = createStructurePass();
   const audio = createAmbience(ACTIVE_SCENE);
   const metrics = new Metrics();
   const routeLog = createRouteLog(ACTIVE_SCENE);
@@ -71,7 +73,20 @@ export function startGame(root: HTMLElement): Game {
   const routeCanvas = DIAGNOSTICS_ENABLED ? createRouteCanvas(ACTIVE_SCENE) : null;
   if (routeCanvas !== null) root.appendChild(routeCanvas.canvas);
 
-  let target = new WebGLRenderTarget(2, 2, { minFilter: NearestFilter, magFilter: NearestFilter });
+  // A profundidade da mesma grade alimenta o reforco estrutural do passe ASCII.
+  // Inteiro sem sinal: com corte de camera em 220 m, 16 bits nao separariam
+  // celulas vizinhas de uma parede proxima.
+  const criarAlvo = (w: number, h: number) => {
+    const depthTexture = new DepthTexture(w, h, UnsignedIntType);
+    depthTexture.format = DepthFormat;
+    depthTexture.minFilter = NearestFilter;
+    depthTexture.magFilter = NearestFilter;
+    const alvo = new WebGLRenderTarget(w, h, { minFilter: NearestFilter, magFilter: NearestFilter });
+    alvo.depthTexture = depthTexture;
+    return alvo;
+  };
+
+  let target = criarAlvo(2, 2);
   let columns = 2;
   let rows = 2;
   let visualRange: VisualRange = DEFAULT_VISUAL_RANGE;
@@ -92,12 +107,17 @@ export function startGame(root: HTMLElement): Game {
     view.setEchoLevel(diag.echoLevel);
     view.setSectorDebug(diag.sectorDebug);
     routeCanvas?.setVisible(diag.sectorDebug);
+    ascii.setStructureEnabled(diag.structure);
+    ascii.setStructureMask(diag.structureMask);
+    ascii.setStructureSource(diag.structureSource);
   };
   syncDiagnostics();
 
   const applyVisualRange = (meters: VisualRange) => {
     visualRange = meters;
     view.setVisualRange(meters);
+    const planos = view.planes();
+    structure.setDepthRange(planos.near, planos.far, planos.fogNear, planos.fogFar);
     rangeLabel.textContent = `${meters} m`;
     labelTimer = 2.2;
   };
@@ -109,26 +129,21 @@ export function startGame(root: HTMLElement): Game {
     // tela. Por isso o quadro é reduzido até o múltiplo exato e centralizado; a
     // sobra fica preta, que já é parte do mundo.
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-    const cellWidth = Math.max(4, Math.round(GLYPH_CELL_WIDTH * dpr));
-    const cellHeight = Math.max(6, Math.round(GLYPH_CELL_HEIGHT * dpr));
-
-    const availableWidth = Math.max(320, Math.floor(root.clientWidth * dpr));
-    const availableHeight = Math.max(240, Math.floor(root.clientHeight * dpr));
-
-    columns = Math.max(2, Math.floor(availableWidth / cellWidth));
-    rows = Math.max(2, Math.floor(availableHeight / cellHeight));
-
-    const bufferWidth = columns * cellWidth;
-    const bufferHeight = rows * cellHeight;
+    const grade = computeGrid(root.clientWidth, root.clientHeight, dpr);
+    const { cellWidth, cellHeight, bufferWidth, bufferHeight } = grade;
+    columns = grade.columns;
+    rows = grade.rows;
 
     renderer.setPixelRatio(1);
     renderer.setSize(bufferWidth, bufferHeight, false);
     canvas.style.width = `${bufferWidth / dpr}px`;
     canvas.style.height = `${bufferHeight / dpr}px`;
 
+    target.depthTexture?.dispose();
     target.dispose();
-    target = new WebGLRenderTarget(columns, rows, { minFilter: NearestFilter, magFilter: NearestFilter });
+    target = criarAlvo(columns, rows);
     ascii.setGrid(columns, rows, cellWidth, cellHeight);
+    structure.setGrid(columns, rows);
 
     view.camera.aspect = bufferWidth / bufferHeight;
     view.camera.updateProjectionMatrix();
@@ -185,6 +200,7 @@ export function startGame(root: HTMLElement): Game {
   window.addEventListener("resize", resize);
   resize();
   applyVisualRange(DEFAULT_VISUAL_RANGE);
+  ascii.setAmbientTint(...view.ambientTint());
 
   const frame = () => {
     if (!running) return;
@@ -222,14 +238,16 @@ export function startGame(root: HTMLElement): Game {
       renderer.setClearColor(0x6a6a6a, 1);
       renderer.clear(true, true, false);
       renderer.setClearColor(0x000000, 1);
-      ascii.render(renderer, target);
+      structure.render(renderer, target.depthTexture!);
+      ascii.render(renderer, target, structure.texture());
     } else if (diag.rawScene) {
       renderer.setRenderTarget(null);
       renderer.render(view.scene, view.camera);
     } else {
       renderer.setRenderTarget(target);
       renderer.render(view.scene, view.camera);
-      ascii.render(renderer, target);
+      structure.render(renderer, target.depthTexture!);
+      ascii.render(renderer, target, structure.texture());
     }
     metrics.recordRender(performance.now() - renderStart);
 
@@ -257,6 +275,9 @@ export function startGame(root: HTMLElement): Game {
         percurso: `${summary.distance.toFixed(0)} m · ${summary.seconds.toFixed(0)} s · hesitacoes ${summary.hesitations} · retornos ${summary.returns}`,
         luzes: diag.worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
         eco: diag.echo ? `${diag.echoLevel} (${ECHO_LEVELS[diag.echoLevel]})` : "desligado",
+        estrutura: diag.structure
+          ? `ligada · ${diag.structureSource}${diag.structureMask ? " · MASCARA" : ""}`
+          : "desligada (base Fase 2)",
         conforto: `sensibilidade ${input.sensitivity().toFixed(1)} · cintilacao ${flickerReduced ? "reduzida" : "normal"}`,
         modo: diag.uniformProbe ? "ENTRADA UNIFORME" : diag.rawScene ? "3D CONVENCIONAL" : "ascii",
         audio: audio.isRunning() ? `ativo · ${audio.emitterCount()} emissores` : "aguardando gesto",
@@ -275,6 +296,7 @@ export function startGame(root: HTMLElement): Game {
       input.dispose();
       audio.dispose();
       ascii.dispose();
+      structure.dispose();
       view.dispose();
       target.dispose();
       renderer.dispose();

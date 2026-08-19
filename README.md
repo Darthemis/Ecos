@@ -8,7 +8,17 @@
 
 ## FASE ATIVA
 
-**Fase 2 — A Rua Interrompida: implementação técnica concluída. Portões 1 e 2 aguardando teste humano.**
+**Fase 2.1A — Legibilidade estrutural de volumes: implementação técnica concluída, aguardando avaliação humana.**
+
+A Fase 2.1 monolítica não foi aprovada visualmente e foi decomposta em
+experiências pequenas e isoladas. Ela **não foi apagada**: está preservada em
+`archive/fase-2.1-monolitica` e será reaproveitada parte por parte. Esta etapa
+altera só a representação perceptiva da estrutura — silhueta, descontinuidade de
+profundidade, encontro de planos e canto. Materiais, cor semântica, iluminação
+em ilha, continuidade horizontal, Eco escalável e geometrias complexas
+continuam adiados.
+
+Os Portões 1 e 2 da Fase 2 continuam aguardando teste humano.
 
 O que existe hoje: um percurso de cerca de 120 metros por uma rua de ruínas, em primeira pessoa e ASCII colorido sobre fundo preto. Três trechos de ritmo espacial distinto — praça aberta, corredor comprimido com curva e rampa, bacia que se abre —, duas rotas que convergem, dois marcos e um vestígio silencioso de um acontecimento passado. Alcance visual de 8, 15 ou 25 metros, radar/bússola verde, som espacial de vários emissores e medição separada de simulação e renderização.
 
@@ -100,6 +110,9 @@ Só existe em `npm run dev`. A construção de produção não contém esse cód
 | `F8` | alterna as três intensidades do Eco de Contato |
 | `F9` | bordas dos setores e planta do percurso registrado |
 | `F11` | exporta o percurso registrado em texto, no console |
+| `B` | liga e desliga o reforço estrutural — desligado é a saída visual da Fase 2 |
+| `N` | só a máscara estrutural, sem a cena por baixo |
+| `M` | isola a parte do sinal: tudo → silhueta e degrau → vinco e canto |
 
 ---
 

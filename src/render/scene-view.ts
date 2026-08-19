@@ -120,6 +120,10 @@ export type SceneView = {
   scene: Scene;
   camera: PerspectiveCamera;
   setVisualRange: (meters: number) => void;
+  /** Planos de camera e nevoa em vigor. O passe ASCII precisa dos quatro. */
+  planes: () => { near: number; far: number; fogNear: number; fogFar: number };
+  /** Cor da luz que sobra onde nao ha fonte alguma. */
+  ambientTint: () => readonly [number, number, number];
   setWorldLightsEnabled: (enabled: boolean) => void;
   setEchoLevel: (level: EchoLevel) => void;
   setEchoEnabled: (enabled: boolean) => void;
@@ -206,8 +210,21 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   // Claridade do lugar, deliberadamente assimetrica: faces verticais recebem um
   // fio de luz rasante e formam silhueta; o chao, cuja normal aponta para cima,
   // recebe o lado preto e desaparece.
-  scene.add(new HemisphereLight(0x000000, 0x2b3550, 0.85));
-  scene.add(new AmbientLight(0x2c3750, 0.16));
+  const HEMISFERIO_CHAO = 0x2b3550;
+  const AMBIENTE = 0x2c3750;
+  scene.add(new HemisphereLight(0x000000, HEMISFERIO_CHAO, 0.85));
+  scene.add(new AmbientLight(AMBIENTE, 0.16));
+
+  // Cor da luz que sobra numa face sem fonte nenhuma por perto: ambiente mais
+  // metade do lado de baixo do hemisferio. Normalizada e puxada para o cinza,
+  // porque serve de matiz de ultimo recurso, nao de cor propria.
+  const ambientTint = (() => {
+    const somaCanal = (i: number) =>
+      ((AMBIENTE >> i) & 0xff) / 255 * 0.16 + ((HEMISFERIO_CHAO >> i) & 0xff) / 255 * 0.85 * 0.5;
+    const rgb = [somaCanal(16), somaCanal(8), somaCanal(0)];
+    const pico = Math.max(...rgb, 1e-6);
+    return rgb.map((c) => 0.45 + 0.55 * (c / pico)) as [number, number, number];
+  })();
 
   const worldLights = definition.lights.map((source) => {
     const light = new PointLight(source.color, source.intensity, source.radius, 1.7);
@@ -259,6 +276,15 @@ export function createSceneView(definition: SceneDefinition): SceneView {
       // descartados antes de existirem — e sem eles nao ha orientacao possivel.
       camera.far = Math.max(meters + 6, LANDMARK_VIEW_DISTANCE);
       camera.updateProjectionMatrix();
+    },
+
+    ambientTint() {
+      return ambientTint;
+    },
+
+    planes() {
+      const fog = scene.fog as Fog;
+      return { near: camera.near, far: camera.far, fogNear: fog.near, fogFar: fog.far };
     },
 
     setWorldLightsEnabled(enabled) {

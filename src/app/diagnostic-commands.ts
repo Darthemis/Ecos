@@ -12,6 +12,15 @@
 
 import type { InputCommand } from "../core/input";
 import { nextEchoLevel, DEFAULT_ECHO_LEVEL, type EchoLevel } from "../world/contact-echo";
+import type { StructureSource } from "../render/structural-legibility";
+
+/** A ordem em que `M` percorre as partes do sinal estrutural. */
+export const STRUCTURE_SOURCES: readonly StructureSource[] = ["todas", "silhueta", "vinco"];
+
+export function nextStructureSource(atual: StructureSource): StructureSource {
+  const i = STRUCTURE_SOURCES.indexOf(atual);
+  return STRUCTURE_SOURCES[(i + 1) % STRUCTURE_SOURCES.length] ?? "todas";
+}
 
 export type DiagnosticState = {
   /** Fontes de luz do mundo ligadas. Desligá-las é o segundo estado da Fase 1.1. */
@@ -23,6 +32,12 @@ export type DiagnosticState = {
   rawScene: boolean;
   /** Entrada uniforme pelo passe ASCII, para conferir as faixas verticais. */
   uniformProbe: boolean;
+  /** Reforço estrutural da Fase 2.1A. Desligado = saída visual da Fase 2. */
+  structure: boolean;
+  /** Só a máscara estrutural, sem a cena por baixo. */
+  structureMask: boolean;
+  /** Qual parte do sinal está isolada. */
+  structureSource: StructureSource;
 };
 
 export const INITIAL_DIAGNOSTIC_STATE: DiagnosticState = {
@@ -32,6 +47,9 @@ export const INITIAL_DIAGNOSTIC_STATE: DiagnosticState = {
   sectorDebug: false,
   rawScene: false,
   uniformProbe: false,
+  structure: true,
+  structureMask: false,
+  structureSource: "todas",
 };
 
 /**
@@ -59,6 +77,12 @@ export function applyDiagnosticCommand(
       return { ...state, rawScene: !state.rawScene };
     case "toggleUniformProbe":
       return { ...state, uniformProbe: !state.uniformProbe };
+    case "toggleStructure":
+      return { ...state, structure: !state.structure };
+    case "toggleStructureMask":
+      return { ...state, structureMask: !state.structureMask };
+    case "cycleStructureSource":
+      return { ...state, structureSource: nextStructureSource(state.structureSource) };
     default:
       return state;
   }

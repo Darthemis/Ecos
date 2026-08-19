@@ -59,3 +59,34 @@ Estes itens foram deliberadamente **não decididos** ao montar a base do projeto
 - **Calibração perceptiva.** Densidade do solo próximo, ganho da rampa, sensibilidade do mouse e alcance visual padrão foram escolhidos por inspeção em execução, não por playtest. São os primeiros candidatos a ajuste depois da avaliação humana da Fase 1.
 - **Consulta de tempo de GPU.** As métricas medem CPU. Se a renderização virar gargalo, medir GPU exige extensões de temporização do WebGL.
 - **Escopo real do comando `simulate`.** Hoje é um stub. Vira ferramenta de simulação acelerada quando existir relógio determinístico (Plano §5.2, `tools/`).
+
+## Abertos pela Fase 2.1A
+
+- **Faixa dinâmica do alvo de renderização.** O alvo tem 8 bits e guarda luz
+  linear; tudo abaixo de 1/255 vira zero exato, e é nessa faixa que este mundo
+  vive. Trocar por meia precisão devolveria a faixa perdida, mas mudaria toda a
+  imagem. É a próxima experiência isolada mais evidente — e precisa ser isolada,
+  não misturada.
+- **Custo da textura de profundidade em rasterização por software.** Anexar
+  profundidade ao alvo, mesmo sem amostrá-la, custa 28% da taxa de quadros no
+  ambiente headless usado nas medições. Em GPU real isso é rotina. Falta medir
+  em hardware antes de tirar qualquer conclusão.
+- **Converter a cena para ASCII na resolução da grade.** O passe ASCII roda a
+  1280 × 714 mas produz apenas 160 × 51 células distintas: conversão para sRGB,
+  luminância e modelagem são repetidas 112 vezes por célula. Um passe por célula
+  seguido de uma consulta ao atlas seria mais barato que a Fase 2. Não foi feito
+  agora para não mexer no caminho base durante uma experiência isolada.
+- **Malhas facetadas e o termo de vinco.** Cada faceta é uma quebra de plano. O
+  limiar atual ignora mudanças pequenas, mas uma esfera de poucos segmentos
+  ainda pode mostrar suas facetas. Reavaliar **antes** de reintroduzir as
+  geometrias complexas, não depois.
+- **Arestas retas longas.** O topo de um muro comprido produz uma linha
+  perfeitamente reta, porque a geometria é reta. Está dentro do que a tarefa
+  pede, mas é o candidato mais provável a incomodar na avaliação humana.
+
+### Adiado da Fase 2.1, preservado em `archive/fase-2.1-monolitica`
+
+Famílias de material e cor semântica; variação tonal entre instâncias; campo
+luminoso com núcleo e cauda; propagação ampliada das fontes; continuidade das
+superfícies horizontais; escalonamento do Eco de Contato pelo perímetro; as duas
+geometrias complexas. Cada um volta como experiência própria, quando autorizado.

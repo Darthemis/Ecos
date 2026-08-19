@@ -79,3 +79,62 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 - **Aprovação humana:** solicitada pelo responsável em 18/08/2026, que instruiu remover ambas as versões anteriores e enviou a v1.1.
 - **GDD atualizado:** não aplicável — o GDD e o Plano permanecem intactos.
 - **Impacto no código:** `AGENT_RULES.md` entrou em `docs/canonical-hashes.json` e voltou à lista de arquivos obrigatórios de `tests/canonical-baseline.test.ts`.
+
+## 2026-08-19 — Recuo controlado: a Fase 2.1 é decomposta em experiências isoladas
+
+- **Decisão afetada:** método de trabalho da fase perceptiva. Nenhuma decisão de
+  `DECISOES_FECHADAS.md` é revogada: fundo preto, primeira pessoa, ASCII
+  colorido e os alcances de 8, 15 e 25 metros continuam valendo, e 15 metros
+  continua o padrão provisório.
+- **Antes:** a Fase 2.1 (`c602cc2`) alterou de uma vez materiais, iluminação,
+  continuidade de superfícies horizontais, Eco de Contato, geometria complexa e
+  distribuição visual. Os testes passaram e a construção foi publicada.
+- **Depois:** a avaliação humana **não aprovou a leitura visual**. A
+  simultaneidade das mudanças tornou impossível atribuir com segurança as
+  regressões perceptivas — superfícies tênues demais, volumes sem forma
+  compreensível, radar frequentemente mais legível que o mundo, objetos
+  complexos sem referência estrutural, continuidade horizontal imperceptível. A
+  fase passa a ser executada como experiências pequenas e isoladas, uma variável
+  por vez.
+- **Preservação:** `c602cc2` **não foi apagado nem revertido**. Está guardado na
+  branch `archive/fase-2.1-monolitica`, publicada no remoto, e numa etiqueta
+  local `fase-2.1-monolitica`. Seu resultado técnico continua válido e será
+  reaproveitado quando cada parte for reintroduzida por conta própria. O
+  trabalho novo parte de `0ab690d`, o estado visual da Fase 2.
+- **Justificativa:** avaliação humana de 19/08/2026, com a instrução explícita
+  de recuar de forma controlada e substituir a implementação monolítica.
+- **Aprovação humana:** solicitada e detalhada pelo responsável em 19/08/2026.
+- **GDD atualizado:** não aplicável — GDD, Plano e `AGENT_RULES.md` permanecem
+  intactos, com os mesmos hashes.
+- **Impacto no código:** nova branch `claude/fase-2.1a-legibilidade` a partir de
+  `0ab690d`. Da Fase 2.1 monolítica só voltou a correção objetiva de `F5`, como
+  alteração separada e com teste próprio.
+
+## 2026-08-19 — Fase 2.1A: legibilidade estrutural de volumes
+
+- **Decisão afetada:** linguagem visual da tela de Jogo, apenas na parte
+  estrutural. Materiais, cor semântica, iluminação em ilha, continuidade
+  horizontal, Eco escalável e geometrias complexas **continuam adiados**.
+- **Antes:** num lugar muito escuro, um volume sem fonte próxima chegava à tela
+  como uma mancha preta sem contorno: não se via onde terminava, onde mudava de
+  direção nem o que estava à frente do quê.
+- **Depois:** silhueta contra o vazio, descontinuidade de profundidade, encontro
+  de planos e canto recebem um pouco mais de densidade de glifo que o interior
+  das superfícies, nessa ordem de força. O interior continua existindo e não foi
+  tocado. O preto continua ocupando a maior parte da composição, o chão vazio
+  continua quase negro e nenhuma luz presa à câmera foi reintroduzida.
+- **Justificativa:** a hipótese, dada pelo responsável, é que arestas, cantos,
+  encontros de planos e silhuetas são mais perceptíveis que o interior das
+  superfícies. Em execução: numa entrada uniforme a resposta é exatamente zero e
+  as faixas verticais continuam em 0,000% de amplitude; num plano visto de
+  raspão, inclusive o chão perto do horizonte, a resposta também é zero; numa
+  rotação lenta de 27,9 s, 16 pixels em 921 600 permanecem acesos do começo ao
+  fim, ou seja, não há linha presa à tela.
+- **Aprovação humana:** pendente. Esta entrada registra a implementação, não a
+  aprovação visual.
+- **GDD atualizado:** não aplicável.
+- **Impacto no código:** `src/render/structural-legibility.ts`,
+  `src/render/structure-pass.ts`, `src/render/ascii-pass.ts`,
+  `src/render/grid.ts`, `src/render/scene-view.ts`, `src/app/game.ts`,
+  `src/app/diagnostic-commands.ts`, `src/core/input.ts`. Simulação, colisão,
+  áudio, radar, setores, rotas e determinismo não foram tocados.
