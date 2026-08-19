@@ -36,8 +36,8 @@ Um item desta lista é resolvido por protótipo ou playtest e, ao ser resolvido,
 
 ## Perceptivos — abertos pela Fase 1.1
 
-- **Eco de Contato.** Regra provisória, ligada por padrão na intensidade **sutil** (0,016), fechamento da Fase 1.1. Três intensidades comparáveis estão disponíveis para avaliação (`F8`): `sutil` 0,016, `intermediario` 0,030, `legivel` 0,052 — valores de emissão em espaço linear. Parâmetros fixos por enquanto: alcance de 1,15 m a partir da borda da área de contato, queda cúbica, ruído de valor a 1,7 células por metro, limiar entre 0,38 e 0,72 conforme o tamanho da fundação, acumulação por `max` (nunca soma), até 24 contatos por quadro. Migra para decisão fechada só depois da avaliação humana.
-- **Alcance do Eco.** Os 1,15 m a partir da borda continuam experimentais. A adaptação para pés, criaturas e objetos muito pequenos foi deliberadamente adiada na Fase 2.
+- **Eco de Contato.** Regra provisória, ligada por padrão na intensidade **sutil** (0,016), fechamento da Fase 1.1. Três intensidades comparáveis estão disponíveis para avaliação (`F8`): `sutil` 0,016, `intermediario` 0,030, `legivel` 0,052 — valores de emissão em espaço linear. A forma agora é uma cápsula contínua, orientada pelo eixo maior da base, com 1,8 m adicionais no comprimento, 0,7 m nas laterais e transição suave de 0,65 m. Contribuições combinam por `max` (nunca soma), até 24 contatos por quadro. Migra para decisão fechada só depois da avaliação humana.
+- **Alcance do Eco.** O alongamento de 1,8 m e a largura lateral de 0,7 m continuam experimentais. A adaptação para pés, criaturas e objetos muito pequenos foi deliberadamente adiada na Fase 2.
 - **Vestígios em criaturas.** A regra aceita qualquer objeto com área de contato conhecida, mas a Fase 1 não tem criaturas: a presença sonora é invisível de propósito. O comportamento junto a pés e patas ainda não foi visto na prática.
 
 ## Abertos pela Fase 2

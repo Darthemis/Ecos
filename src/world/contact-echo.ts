@@ -19,7 +19,6 @@
 // desse contato. Nao conhece Three.js nem DOM.
 
 import type { Obstacle, Vec2 } from "./geometry";
-import { obstacleAabb } from "./geometry";
 
 /** Altura da base ate a qual um objeto e considerado apoiado no terreno. */
 export const GROUND_CONTACT_EPSILON = 0.05;
@@ -31,16 +30,12 @@ export type ContactFootprint = {
   id: string;
   /** Centro da area de contato, no plano do terreno. */
   center: Vec2;
-  /** Meia extensao em cada eixo: a area e retangular, nao um circulo igual para todos. */
-  halfExtent: Vec2;
-  /** Deriva da identidade do objeto. Mesma identidade, mesmo padrao, sempre. */
-  seed: number;
-  /**
-   * 1 para contatos pequenos, caindo conforme a area cresce. A renderizacao usa
-   * isto para elevar o limiar do ruido em fundacoes grandes: uma estrutura longa
-   * recebe poucos vestigios espalhados, nunca a area inteira sob ela acesa.
-   */
-  sparsity: number;
+  /** Metade do comprimento da base, sempre no eixo mais longo. */
+  halfLength: number;
+  /** Metade da largura da base, sempre no eixo mais curto. */
+  halfWidth: number;
+  /** Eixo mais longo da base, ja girado para o espaco do mundo. */
+  axis: Vec2;
 };
 
 /** Um objeto suspenso, voando ou sem contato com o terreno nao produz eco. */
@@ -48,34 +43,19 @@ export function isGrounded(obstacle: Obstacle): boolean {
   return obstacle.baseY <= GROUND_CONTACT_EPSILON;
 }
 
-/**
- * Semente estavel a partir da identidade. Nao ha aleatoriedade recalculada: o
- * mesmo objeto produz o mesmo padrao em toda execucao e em todo quadro.
- */
-export function seedFromId(id: string): number {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < id.length; i += 1) {
-    hash ^= id.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  // Reduzido a uma faixa pequena para nao perder precisao no shader.
-  return (hash % 4096) / 4096;
-}
-
 export function contactFootprint(obstacle: Obstacle): ContactFootprint {
-  const box = obstacleAabb(obstacle);
-  const halfExtent = {
-    x: (box.maxX - box.minX) / 2,
-    z: (box.maxZ - box.minZ) / 2,
-  };
-  const area = 4 * halfExtent.x * halfExtent.z;
+  const longAxisIsX = obstacle.size.x >= obstacle.size.z;
+  const cosine = Math.cos(obstacle.yaw);
+  const sine = Math.sin(obstacle.yaw);
 
   return {
     id: obstacle.id,
     center: { x: obstacle.center.x, z: obstacle.center.z },
-    halfExtent,
-    seed: seedFromId(obstacle.id),
-    sparsity: Math.max(0.28, Math.min(1, 3.2 / (3.2 + area))),
+    halfLength: Math.max(obstacle.size.x, obstacle.size.z) / 2,
+    halfWidth: Math.min(obstacle.size.x, obstacle.size.z) / 2,
+    axis: longAxisIsX
+      ? { x: cosine, z: -sine }
+      : { x: sine, z: cosine },
   };
 }
 

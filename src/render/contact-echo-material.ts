@@ -10,11 +10,10 @@ import type { MeshLambertMaterial, WebGLProgramParametersWithUniforms } from "th
 import { Vector2, Vector3, Vector4 } from "three";
 import { MAX_CONTACTS, type ContactFootprint } from "../world/contact-echo";
 
-/** Alcance do eco a partir da borda da area de contato, em metros. */
-const ECHO_REACH = 1.15;
-
-/** Celulas de ruido por metro. Define o tamanho dos retalhos. */
-const NOISE_SCALE = 1.7;
+/** O eco se estende mais no comprimento do contato do que nas laterais. */
+const ECHO_LENGTH_REACH = 1.8;
+const ECHO_SIDE_REACH = 0.7;
+const ECHO_FADE = 0.65;
 
 const ECHO_COLOR = new Vector3(0.62, 0.66, 0.78);
 
@@ -31,27 +30,6 @@ vEchoWorld = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
 
 const FRAGMENT_HOOK = "#include <emissivemap_fragment>";
 
-// Declaradas fora de main: o ponto de injecao do termo fica dentro dela.
-const FRAGMENT_HELPERS = /* glsl */ `
-// Ruido de valor ancorado no espaco do mundo. Sem termo de tempo e sem
-// dependencia da tela: ao caminhar ou girar, o vestigio continua pertencendo ao
-// mesmo lugar do terreno.
-float ecoHash( vec2 cell, float seed ) {
-  return fract( sin( dot( cell, vec2( 127.1, 311.7 ) ) + seed * 53.7 ) * 43758.5453 );
-}
-
-float ecoNoise( vec2 p, float seed ) {
-  vec2 cell = floor( p );
-  vec2 f = fract( p );
-  f = f * f * ( 3.0 - 2.0 * f );
-  float a = ecoHash( cell, seed );
-  float b = ecoHash( cell + vec2( 1.0, 0.0 ), seed );
-  float c = ecoHash( cell + vec2( 0.0, 1.0 ), seed );
-  float d = ecoHash( cell + vec2( 1.0, 1.0 ), seed );
-  return mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y );
-}
-`;
-
 const FRAGMENT_INJECTION = /* glsl */ `
 #include <emissivemap_fragment>
 
@@ -61,27 +39,19 @@ for ( int i = 0; i < ECHO_MAX_CONTACTS; i ++ ) {
   if ( i >= uEchoCount ) break;
 
   vec4 area = uEchoAreas[ i ];
-  vec2 meta = uEchoMeta[ i ];
+  vec2 axis = uEchoAxes[ i ];
+  vec2 side = vec2( -axis.y, axis.x );
+  vec2 delta = vEchoWorld.xz - area.xy;
+  vec2 local = vec2( dot( delta, axis ), dot( delta, side ) );
 
-  // Distancia ate a borda do retangulo de contato, nao ate o centro: a forma e o
-  // tamanho da area entram no resultado e nenhum objeto recebe um circulo igual.
-  vec2 d = abs( vEchoWorld.xz - area.xy ) - area.zw;
-  float edge = length( max( d, 0.0 ) ) + min( max( d.x, d.y ), 0.0 );
+  // Capsula orientada pela base real: centro uniforme, pontas arredondadas e
+  // extensao deliberadamente maior no comprimento do contato.
+  float along = max( abs( local.x ) - ( area.z + uEchoLengthReach ), 0.0 );
+  float capsule = length( vec2( along, local.y ) ) - ( area.w + uEchoSideReach );
+  float fall = 1.0 - smoothstep( -uEchoFade, uEchoFade, capsule );
 
-  float fall = 1.0 - clamp( edge / uEchoReach, 0.0, 1.0 );
-  fall = fall * fall * fall;
-
-  // O limiar sobe com o tamanho da fundacao: estruturas grandes recebem poucos
-  // vestigios ao longo dela, em vez da area inteira abaixo.
-  float sparsity = meta.y;
-  float threshold = 0.38 + ( 1.0 - sparsity ) * 0.34;
-
-  float n = ecoNoise( vEchoWorld.xz * uEchoNoiseScale, meta.x );
-  float broken = smoothstep( threshold, threshold + 0.22, n );
-
-  // max, nunca soma: por mais objetos que se aproximem, o chao nao vira uma
-  // superficie continua.
-  eco = max( eco, fall * broken );
+  // max, nunca soma: contatos sobrepostos nao aumentam a intensidade.
+  eco = max( eco, fall );
 }
 
 totalEmissiveRadiance += uEchoColor * eco * uEchoStrength;
@@ -94,15 +64,16 @@ totalEmissiveRadiance += uEchoColor * eco * uEchoStrength;
  */
 export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUniforms {
   const areas = Array.from({ length: MAX_CONTACTS }, () => new Vector4(0, 0, 0, 0));
-  const meta = Array.from({ length: MAX_CONTACTS }, () => new Vector2(0, 1));
+  const axes = Array.from({ length: MAX_CONTACTS }, () => new Vector2(1, 0));
 
   const uniforms = {
     uEchoCount: { value: 0 },
     uEchoAreas: { value: areas },
-    uEchoMeta: { value: meta },
+    uEchoAxes: { value: axes },
     uEchoStrength: { value: 0 },
-    uEchoReach: { value: ECHO_REACH },
-    uEchoNoiseScale: { value: NOISE_SCALE },
+    uEchoLengthReach: { value: ECHO_LENGTH_REACH },
+    uEchoSideReach: { value: ECHO_SIDE_REACH },
+    uEchoFade: { value: ECHO_FADE },
     uEchoColor: { value: ECHO_COLOR },
   };
 
@@ -119,12 +90,12 @@ export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUni
       "varying vec3 vEchoWorld;",
       "uniform int uEchoCount;",
       `uniform vec4 uEchoAreas[${MAX_CONTACTS}];`,
-      `uniform vec2 uEchoMeta[${MAX_CONTACTS}];`,
+      `uniform vec2 uEchoAxes[${MAX_CONTACTS}];`,
       "uniform float uEchoStrength;",
-      "uniform float uEchoReach;",
-      "uniform float uEchoNoiseScale;",
+      "uniform float uEchoLengthReach;",
+      "uniform float uEchoSideReach;",
+      "uniform float uEchoFade;",
       "uniform vec3 uEchoColor;",
-      FRAGMENT_HELPERS,
       shader.fragmentShader,
     ]
       .join("\n")
@@ -140,8 +111,8 @@ export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUni
       const count = Math.min(footprints.length, MAX_CONTACTS);
       for (let i = 0; i < count; i += 1) {
         const print = footprints[i]!;
-        areas[i]!.set(print.center.x, print.center.z, print.halfExtent.x, print.halfExtent.z);
-        meta[i]!.set(print.seed, print.sparsity);
+        areas[i]!.set(print.center.x, print.center.z, print.halfLength, print.halfWidth);
+        axes[i]!.set(print.axis.x, print.axis.z);
       }
       uniforms.uEchoCount.value = count;
     },

@@ -150,20 +150,11 @@ O efeito é, em vez disso, um termo somado à emissão do **material do terreno*
 A oclusão passa a ser consequência do teste de profundidade: se um muro está
 entre a câmera e aquele chão, o chão não é desenhado, e nada vaza através dele.
 
-**Forma do contato.** A distância usada é até a **borda do retângulo de contato**,
-não até o centro, então a forma e o tamanho do objeto entram no resultado e
-nenhum objeto recebe um círculo igual. O retângulo vem da mesma caixa alinhada
-aos eixos que a colisão já usa, incluindo o efeito da rotação.
-
-**Irregularidade estável.** Um ruído de valor ancorado nas coordenadas do mundo,
-semeado pela identidade do objeto, é passado por um limiar. O resultado são
-trechos interrompidos, nunca um anel completo. Não há termo de tempo nem
-dependência da tela: ao caminhar ou girar, o vestígio continua pertencendo ao
-mesmo lugar do terreno.
-
-**Fundações grandes.** O limiar sobe com a área de contato, de 0,38 para até
-0,72. Uma estrutura longa recebe poucos vestígios distribuídos ao longo dela, em
-vez da área inteira abaixo acesa.
+**Forma do contato.** A base real do objeto define uma **cápsula orientada**:
+comprimento, largura e rotação entram no resultado. O centro é uniforme, as
+pontas são arredondadas e a extensão adicional é maior no eixo longo (1,8 m) do
+que nas laterais (0,7 m). Assim o terreno parece desvelar-se numa faixa contínua,
+sem o aspecto quadrado do retângulo nem as poças produzidas por ruído.
 
 **Acumulação.** As contribuições combinam por `max`, nunca por soma. Por mais
 objetos que se aproximem, o teto é o de um único contato — o chão não volta a ser

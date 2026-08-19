@@ -24,7 +24,7 @@ O que existe hoje: um percurso de cerca de 120 metros por uma rua de ruínas, em
 
 O teste do Portão 1 foi **adiado deliberadamente**, a pedido do responsável, e será feito junto com o do Portão 2 num único ciclo. Nenhum agente pode declarar qualquer um dos dois aprovado.
 
-**Eco de Contato** (experiência provisória): o que toca o terreno torna minimamente legível o lugar onde o toca — poucos vestígios interrompidos junto da área real de contato, mais fracos que o próprio objeto. Não é luz: é o terreno que se sombreia, então paredes o ocultam pelo simples teste de profundidade.
+**Eco de Contato** (experiência provisória): o que toca o terreno torna minimamente legível o lugar onde o toca — uma faixa suave, contínua e alongada junto da base, mais fraca que o próprio objeto. Não é luz: é o terreno que se sombreia, então paredes o ocultam pelo simples teste de profundidade.
 
 **A luz pertence ao mundo, não ao personagem.** Sem uma fonte próxima, o terreno aos pés é quase inteiramente preto e restam poucos glifos esparsos; junto de uma fonte — hoje o calor que escapa da máquina soterrada sob a ruína — a região alcançada revela terreno e objetos.
 

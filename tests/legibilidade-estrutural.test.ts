@@ -292,6 +292,23 @@ describe("aplicação do reforço", () => {
     expect(shader.fragmentShader).toContain("vec3 outgoingLight = ecosStableDiffuse + totalEmissiveRadiance;");
   });
 
+  it("o Eco de Contato e continuo, arredondado e orientado pela base", () => {
+    const material = new MeshLambertMaterial();
+    attachContactEcho(material);
+
+    const shader = {
+      uniforms: {},
+      vertexShader: "#include <begin_vertex>",
+      fragmentShader: "#include <emissivemap_fragment>",
+    } as unknown as WebGLProgramParametersWithUniforms;
+
+    material.onBeforeCompile(shader, {} as WebGLRenderer);
+    expect(shader.fragmentShader).toContain("uEchoAxes");
+    expect(shader.fragmentShader).toContain("float capsule");
+    expect(shader.fragmentShader).toContain("smoothstep( -uEchoFade, uEchoFade, capsule )");
+    expect(shader.fragmentShader).not.toContain("ecoNoise");
+  });
+
   it("uma célula clara quase não muda — nada de halo", () => {
     expect(reinforce(0.92, STRUCTURE.teto)).toBeLessThan(0.98);
     expect(reinforce(0.92, STRUCTURE.teto) - 0.92).toBeLessThan(0.06);
