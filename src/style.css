@@ -24,15 +24,18 @@ body {
 
 .ecos-root {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 100%;
   background: #000;
   cursor: crosshair;
 }
 
+/* Tamanho definido em pixels pelo motor: a grade de caracteres precisa cair em
+   pixels inteiros do dispositivo. A sobra ao redor fica preta. */
 .ecos-canvas {
   display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .ecos-radar {

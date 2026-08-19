@@ -63,6 +63,8 @@ export function startGame(root: HTMLElement): Game {
   let rows = 2;
   let visualRange: VisualRange = DEFAULT_VISUAL_RANGE;
   let showRawScene = false;
+  let uniformProbe = false;
+  let worldLights = true;
   let state = createWorldState();
   let accumulator = 0;
   let previous = performance.now();
@@ -78,19 +80,37 @@ export function startGame(root: HTMLElement): Game {
   };
 
   const resize = () => {
-    const width = Math.max(320, root.clientWidth);
-    const height = Math.max(240, root.clientHeight);
+    // A grade precisa cair em pixels inteiros do dispositivo. Quando a largura
+    // nao e multiplo exato da celula, cada celula ocupa uma fracao de pixel e o
+    // batimento entre as duas grades aparece como faixas verticais fixas na
+    // tela. Por isso o quadro e dimensionado para baixo ate o multiplo exato e
+    // centralizado; a sobra fica preta, que ja e parte do mundo.
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    const cellWidth = Math.max(4, Math.round(GLYPH_CELL_WIDTH * dpr));
+    const cellHeight = Math.max(6, Math.round(GLYPH_CELL_HEIGHT * dpr));
 
-    renderer.setSize(width, height, false);
+    const availableWidth = Math.max(320, Math.floor(root.clientWidth * dpr));
+    const availableHeight = Math.max(240, Math.floor(root.clientHeight * dpr));
 
-    columns = Math.max(2, Math.floor(width / GLYPH_CELL_WIDTH));
-    rows = Math.max(2, Math.floor(height / GLYPH_CELL_HEIGHT));
+    columns = Math.max(2, Math.floor(availableWidth / cellWidth));
+    rows = Math.max(2, Math.floor(availableHeight / cellHeight));
+
+    const bufferWidth = columns * cellWidth;
+    const bufferHeight = rows * cellHeight;
+
+    // setPixelRatio(1) com o tamanho ja em pixels do dispositivo: o buffer tem
+    // exatamente o tamanho pedido e o CSS o apresenta um-para-um, sem que o
+    // navegador reescale a imagem.
+    renderer.setPixelRatio(1);
+    renderer.setSize(bufferWidth, bufferHeight, false);
+    canvas.style.width = `${bufferWidth / dpr}px`;
+    canvas.style.height = `${bufferHeight / dpr}px`;
 
     target.dispose();
     target = new WebGLRenderTarget(columns, rows, { minFilter: NearestFilter, magFilter: NearestFilter });
-    ascii.setGrid(columns, rows);
+    ascii.setGrid(columns, rows, cellWidth, cellHeight);
 
-    view.camera.aspect = width / height;
+    view.camera.aspect = bufferWidth / bufferHeight;
     view.camera.updateProjectionMatrix();
   };
 
@@ -117,6 +137,18 @@ export function startGame(root: HTMLElement): Game {
         break;
       case "toggleDiagnostics":
         if (diagnostics !== null) diagnostics.setVisible(diagnostics.element.hidden);
+        break;
+      case "toggleWorldLights":
+        // Diagnostico dos dois estados de iluminacao, na mesma cena e posicao.
+        if (DIAGNOSTICS_ENABLED) {
+          worldLights = !worldLights;
+          view.setWorldLightsEnabled(worldLights);
+        }
+        break;
+      case "toggleUniformProbe":
+        // Entrada perfeitamente uniforme atravessando o passe ASCII. Serve para
+        // isolar vies periodico da grade: colunas iguais devem sair iguais.
+        if (DIAGNOSTICS_ENABLED) uniformProbe = !uniformProbe;
         break;
       case "toggleRawScene":
         // Modo 3D convencional: diagnostico apenas. Ausente da construcao de
@@ -148,11 +180,18 @@ export function startGame(root: HTMLElement): Game {
     state = advance(state, intent, plan.ticks);
     metrics.recordSim(performance.now() - simStart, plan.ticks, plan.dropped);
 
+    view.update(elapsed);
     view.camera.position.set(state.player.position.x, PLAYER_EYE_HEIGHT, state.player.position.z);
     view.camera.rotation.set(state.player.pitch, state.player.yaw, 0, "YXZ");
 
     const renderStart = performance.now();
-    if (showRawScene) {
+    if (uniformProbe) {
+      renderer.setRenderTarget(target);
+      renderer.setClearColor(0x6a6a6a, 1);
+      renderer.clear(true, true, false);
+      renderer.setClearColor(0x000000, 1);
+      ascii.render(renderer, target);
+    } else if (showRawScene) {
       renderer.setRenderTarget(null);
       renderer.render(view.scene, view.camera);
     } else {
@@ -177,7 +216,8 @@ export function startGame(root: HTMLElement): Game {
       grade: `${columns} x ${rows}`,
       alcance: `${visualRange} m`,
       tick: String(state.tick),
-      modo: showRawScene ? "3D CONVENCIONAL (diagnostico)" : "ascii",
+      luzes: worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
+      modo: uniformProbe ? "ENTRADA UNIFORME (diagnostico)" : showRawScene ? "3D CONVENCIONAL (diagnostico)" : "ascii",
       audio: audio.isRunning() ? "ativo" : "aguardando gesto",
     });
 

@@ -43,6 +43,35 @@ export const OBSTACLES: readonly Obstacle[] = [
 ];
 
 /**
+ * Fontes de luz que pertencem ao mundo, nunca ao personagem. O chao so aparece
+ * onde alguma delas alcanca; longe de todas, o terreno some no preto.
+ *
+ * Esta e o calor que escapa da maquina soterrada sob a ruina — a mesma maquina
+ * do cenario de ouro do Plano §8. A luz tem origem no mundo e uma causa.
+ */
+export type LightSource = {
+  id: string;
+  position: { x: number; y: number; z: number };
+  color: number;
+  /** Alcance em metros. Alem dele a fonte nao contribui. */
+  radius: number;
+  intensity: number;
+  /** Amplitude e ritmo da oscilacao, em fracao da intensidade. */
+  flicker: number;
+};
+
+export const LIGHT_SOURCES: readonly LightSource[] = [
+  {
+    id: "ember-maquina",
+    position: { x: 0.9, y: 0.85, z: -11.7 },
+    color: 0xff7326,
+    radius: 14,
+    intensity: 16,
+    flicker: 0.09,
+  },
+];
+
+/**
  * Percurso fechado da presenca sonora. Ela nunca e desenhada: existe para o
  * ouvido e para um unico contato ambiguo no radar. O caminho passa perto do
  * ponto inicial e depois se afasta, para que aproximacao e afastamento sejam

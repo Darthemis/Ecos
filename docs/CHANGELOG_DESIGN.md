@@ -31,6 +31,16 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-19 — A luz pertence ao mundo, nunca ao personagem
+
+- **Decisão afetada:** linguagem visual da tela de Jogo. Nenhuma decisão de `DECISOES_FECHADAS.md` é revogada: o fundo preto, a visão curta, o ASCII colorido e os alcances de 8, 15 e 25 metros continuam valendo.
+- **Antes:** uma luz presa à câmera acompanhava o olhar, com alcance e intensidade proporcionais ao alcance visual. Ela produzia gradiente de proximidade, mas também a impressão de uma lanterna carregada pelo personagem: o chão aos pés formava uma massa contínua e brilhante, com faixas horizontais densas.
+- **Depois:** não existe nenhuma luz presa à câmera. Restam a claridade do lugar — um hemisfério deliberadamente assimétrico, que ilumina faces verticais e deixa o chão no escuro — e as fontes que pertencem ao mundo, declaradas em `src/content/desert-scene.ts`. Sem fonte próxima, o terreno aos pés é quase inteiramente preto; junto de uma fonte, a região por ela alcançada revela terreno e objetos.
+- **Justificativa:** avaliação humana da Fase 1 apontou a leitura de lanterna como resultado indesejado, e o protótipo confirmou por medição: no ponto inicial, sem fonte próxima, o quadro tem 0,15% de tinta e nenhum pixel quente; junto da máquina soterrada, 2,10% de tinta e 7 249 pixels quentes; desligando a mesma fonte na mesma posição, 1,41% e zero pixels quentes.
+- **Aprovação humana:** solicitada pelo responsável em 19/08/2026, na Fase 1.1, com referências visuais anexadas.
+- **GDD atualizado:** não aplicável — o GDD e o Plano permanecem intactos. O GDD §12.1 já define o preto como distância, obstrução e ausência de informação; esta decisão passa a cumpri-lo em vez de contrariá-lo.
+- **Impacto no código:** `src/render/desert-view.ts` (iluminação), `src/content/desert-scene.ts` (fontes de luz orientadas a dados), `src/app/game.ts` e `src/core/input.ts` (diagnósticos F5 e F6). Simulação, colisão, áudio, radar e determinismo não foram tocados.
+
 ## 2026-08-18 — AGENT_RULES.md v1.1 passa a ser canônico
 
 - **Decisão afetada:** protocolo de agentes (não altera nenhuma decisão de `DECISOES_FECHADAS.md`)

@@ -12,7 +12,7 @@ import {
   type WebGLRenderer,
   type WebGLRenderTarget,
 } from "three";
-import { createGlyphAtlas } from "./glyph-atlas";
+import { createGlyphAtlas, GLYPH_CELL_HEIGHT, GLYPH_CELL_WIDTH } from "./glyph-atlas";
 
 const VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
@@ -64,12 +64,13 @@ const FRAGMENT_SHADER = /* glsl */ `
 
 export type AsciiPass = {
   render: (renderer: WebGLRenderer, source: WebGLRenderTarget) => void;
-  setGrid: (columns: number, rows: number) => void;
+  /** Celula em pixels do dispositivo: o atlas e refeito quando ela muda. */
+  setGrid: (columns: number, rows: number, cellWidth: number, cellHeight: number) => void;
   dispose: () => void;
 };
 
 export function createAsciiPass(): AsciiPass {
-  const atlas = createGlyphAtlas();
+  let atlas = createGlyphAtlas(GLYPH_CELL_WIDTH, GLYPH_CELL_HEIGHT);
 
   const material = new ShaderMaterial({
     uniforms: {
@@ -98,8 +99,14 @@ export function createAsciiPass(): AsciiPass {
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
     },
-    setGrid(columns, rows) {
+    setGrid(columns, rows, cellWidth, cellHeight) {
       (material.uniforms.uGrid!.value as Vector2).set(columns, rows);
+
+      if (atlas.cellWidth === cellWidth && atlas.cellHeight === cellHeight) return;
+      atlas.texture.dispose();
+      atlas = createGlyphAtlas(cellWidth, cellHeight);
+      material.uniforms.uGlyphs!.value = atlas.texture;
+      material.uniforms.uGlyphCount!.value = atlas.glyphCount;
     },
     dispose() {
       geometry.dispose();

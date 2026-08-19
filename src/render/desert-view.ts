@@ -4,6 +4,7 @@
 import {
   AmbientLight,
   BoxGeometry,
+  HemisphereLight,
   CanvasTexture,
   Color,
   Fog,
@@ -19,6 +20,7 @@ import {
 import { createRng } from "../core/rng";
 import {
   GROUND_HALF_EXTENT,
+  LIGHT_SOURCES,
   OBSTACLES,
   SCENE_SEED,
 } from "../content/desert-scene";
@@ -108,6 +110,9 @@ export type DesertView = {
   scene: Scene;
   camera: PerspectiveCamera;
   setVisualRange: (meters: number) => void;
+  /** Diagnostico: desliga as fontes do mundo para comparar os dois estados. */
+  setWorldLightsEnabled: (enabled: boolean) => void;
+  update: (seconds: number) => void;
   dispose: () => void;
 };
 
@@ -137,26 +142,48 @@ export function createDesertView(): DesertView {
     scene.add(mesh);
   }
 
-  scene.add(new AmbientLight(0x4a5570, 0.58));
+  // O personagem nao ilumina o mundo. Nao existe luz presa a camera.
+  //
+  // Resta apenas a claridade do lugar, e ela e deliberadamente assimetrica: o
+  // hemisferio ilumina de baixo, de modo que faces verticais recebem um fio de
+  // luz rasante e formam silhueta, enquanto o chao — cuja normal aponta para
+  // cima — recebe o lado preto e desaparece. O ambiente minusculo existe apenas
+  // para que os picos do ruido da areia cruzem o primeiro degrau da rampa e
+  // sobrem alguns glifos esparsos, evitando perda total de orientacao.
+  scene.add(new HemisphereLight(0x000000, 0x2b3550, 0.85));
+  scene.add(new AmbientLight(0x2c3750, 0.16));
 
-  // Luz presa ao olhar: o alcance visual passa a ser algo que se ve, nao apenas
-  // um valor. Sem ela a nevoa preta corta a cena sem gradiente de proximidade.
-  const carried = new PointLight(0xffe6c2, 6.5, 20, 1.6);
-  carried.position.set(0, 0, 0);
-  camera.add(carried);
+  // Fontes que pertencem ao mundo. Sao elas que revelam o terreno.
+  const worldLights = LIGHT_SOURCES.map((source) => {
+    const light = new PointLight(source.color, source.intensity, source.radius, 1.7);
+    light.position.set(source.position.x, source.position.y, source.position.z);
+    scene.add(light);
+    return { light, source };
+  });
+
   scene.add(camera);
 
   return {
     scene,
     camera,
     setVisualRange(meters) {
+      // O alcance mexe apenas na nevoa e no corte da camera. Nenhuma luz
+      // acompanha o olhar, portanto nenhum alcance acende o chao aos pes.
       const fog = scene.fog as Fog;
-      fog.near = Math.max(0.6, meters * 0.18);
+      fog.near = Math.max(0.6, meters * 0.2);
       fog.far = meters;
       camera.far = meters + 6;
       camera.updateProjectionMatrix();
-      carried.distance = meters * 1.4;
-      carried.intensity = 6.5 + meters * 0.75;
+    },
+    setWorldLightsEnabled(enabled) {
+      for (const { light } of worldLights) light.visible = enabled;
+    },
+    update(seconds) {
+      // Oscilacao lenta: a fonte e calor, nao uma lampada.
+      for (const { light, source } of worldLights) {
+        const wobble = Math.sin(seconds * 2.3 + light.position.x) * 0.6 + Math.sin(seconds * 5.7) * 0.4;
+        light.intensity = source.intensity * (1 + wobble * source.flicker);
+      }
     },
     dispose() {
       sand.dispose();

@@ -86,3 +86,55 @@ jogador não tem como alcançá-los.
 **Limite da medição:** `render` mede o tempo de CPU gasto em submeter os
 desenhos, não o tempo de GPU. Medir GPU exigiria consultas de temporização do
 WebGL, fora do escopo desta fase.
+
+---
+
+## Fase 1.1 — Correção perceptiva
+
+### Faixas verticais fixas na tela
+
+**Causa:** a grade de caracteres não caía em pixels inteiros. As colunas eram
+`floor(largura / 8)`, mas o quad do passe ASCII cobria a largura inteira, então
+cada célula ocupava `largura / colunas` pixels — uma fração sempre que a largura
+não era múltiplo exato de 8. O batimento entre a grade de células e a grade de
+pixels aparecia como colunas fixas na tela, mais claras e mais escuras,
+independentes do mundo observado. Uma segunda fonte somava-se à primeira: com
+`setPixelRatio(1)` em tela de alta densidade, o navegador reescalava o quadro por
+um fator não inteiro, reamostrando periodicamente. O atlas de glifos, desenhado
+com supersample 4× e amostrado por vizinho mais próximo, contribuía com um
+resíduo, porque a fase do texel escolhido variava de célula para célula.
+
+**Medição, com entrada perfeitamente uniforme atravessando o passe:**
+
+| Largura | Antes (amplitude entre células) | Depois |
+| --- | --- | --- |
+| 1280 (múltiplo de 8) | 1,285% | 0,000% |
+| 1277 (não múltiplo) | **4,177%**, padrão periódico em blocos | 0,000% |
+| 1512 | 1,285% | 0,000% |
+| 1277 com densidade 1,25 | — | 0,009% |
+| 1277 com densidade 2 | — | 0,000% |
+
+**Correção:** o quadro passa a ser dimensionado em pixels do dispositivo e
+reduzido até o múltiplo exato da célula; o excedente fica preto, que já é parte
+do mundo. O CSS apresenta o buffer um-para-um, sem reescala do navegador. O atlas
+de glifos é gerado no tamanho exato da célula em pixels do dispositivo — um texel
+por pixel — e refeito quando a densidade da tela muda.
+
+Nenhum ruído, dithering ou variação artificial foi usado para esconder o padrão.
+
+### Iluminação
+
+A luz presa à câmera foi removida. Ver `CHANGELOG_DESIGN.md` para a decisão e
+`src/content/desert-scene.ts` para as fontes do mundo. Consequência técnica: o
+alcance visual passou a mexer apenas na névoa e no corte da câmera, e as faixas
+horizontais densas no chão desapareceram junto com a luz que as produzia — elas
+eram o gradiente de distância dessa própria luz.
+
+### Diagnósticos acrescentados
+
+Ambos existem apenas em desenvolvimento e não entram na construção de produção.
+
+| Tecla | Diagnóstico |
+| --- | --- |
+| `F5` | liga e desliga as fontes de luz do mundo, para comparar os dois estados na mesma posição |
+| `F6` | injeta uma entrada perfeitamente uniforme no passe ASCII, para medir viés periódico da grade |

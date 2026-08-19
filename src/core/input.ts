@@ -22,7 +22,7 @@ const LOOK_SENSITIVITY = 0.0022;
 const KEY_YAW_RATE = 1.05;
 const KEY_PITCH_RATE = 0.62;
 
-export type InputCommand = "cycleRange" | "range8" | "range15" | "range25" | "toggleDiagnostics" | "toggleRawScene";
+export type InputCommand = "cycleRange" | "range8" | "range15" | "range25" | "toggleDiagnostics" | "toggleRawScene" | "toggleUniformProbe" | "toggleWorldLights";
 
 /** Como o jogador olhou por ultimo. Serve a indicacao na tela. */
 export type LookMode = "pointerLock" | "drag" | "keys" | "idle";
@@ -45,6 +45,8 @@ const COMMAND_KEYS: Record<string, InputCommand> = {
   KeyV: "cycleRange",
   F3: "toggleDiagnostics",
   F4: "toggleRawScene",
+  F5: "toggleWorldLights",
+  F6: "toggleUniformProbe",
 };
 
 const TURN_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
