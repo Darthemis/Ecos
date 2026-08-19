@@ -249,3 +249,107 @@ verificado por teste que compara o estado com e sem registro.
 | `F10` | redução de cintilação (conforto, vale também no jogo normal) |
 | `F11` | exporta o percurso em texto no console |
 | `−` `=` | sensibilidade da visada (conforto, vale no jogo normal) |
+
+---
+
+## Fase 2.1 — Calibração de materiais, volumes e iluminação
+
+### Nenhum G-buffer foi preciso
+
+A distinção entre famílias de material cabe no pipeline atual. A textura
+procedural de cada família modula a luminância da superfície, e o passe ASCII já
+converte luminância em densidade de glifos — então cor **e** densidade separam
+os materiais sem alvo de renderização novo. Isto evitou a condição de parada
+do §21.
+
+### Composição cromática
+
+    família → variação individual → iluminação do mundo → atmosfera
+
+A família traz cor base, faixa de variação, resposta à luz, piso ambiental e
+padrão de superfície. A variação individual vem de um hash FNV de
+`identidade + seed`, decomposto em três deslocamentos limitados pela faixa da
+família. Depende apenas de identidade e seed: não muda com câmera, setor ou
+quadro. Quatro famílias provisórias: `pedra`, `metal-oxidado`, `organico`,
+`anomalo`.
+
+### Regra da continuidade de superfície
+
+    contribuição = cor × orientação × dentroDaPercepção × ruídoEsparso × força
+
+`orientação` é `smoothstep(0.22, 0.82, normal.y)`: parede recebe zero, rampa
+recebe parte, tampo recebe tudo — uma rampa não lê como parede. `dentroDaPercepção`
+cai entre 35% e 90% do alcance visual ativo, então o sinal some junto com a
+névoa. O ruído é ancorado no mundo, sem termo de tempo. **Só se aplica a
+superfícies de objetos, nunca ao chão**, que é como o chão vazio continua preto.
+A distância entra, a **direção do olhar não** — por isso não age como foco preso
+à câmera. Força: 0,021 em emissão linear.
+
+### Propagação luminosa: por que um campo assado
+
+Comparação exigida pelo §8:
+
+| | duas luzes pontuais por fonte | campo luminoso de baixa resolução |
+| --- | --- | --- |
+| núcleo e cauda | sim | sim |
+| bloqueio por estruturas | **nenhum** — luz pontual sem mapa de sombra atravessa muros | sim, aproximado |
+| custo em execução | 8 luzes por fragmento | uma leitura de textura |
+| competição com a simulação | cresce com as fontes | constante |
+
+A alternativa simples falha justamente no requisito de bloqueio, e mapas de
+sombra estão fora de escopo. Escolhido o campo: grade de 1 m sobre o plano XZ,
+9 000 células, assada uma vez em ~90 ms, consultada como textura.
+
+Núcleo: `I / (1 + (d / 0,34R)²)`, cortado em `R`. Cauda: `0,16·I / (1 + (d / 0,42·3,4R)²)`,
+cortada em `3,4R`. O campo é normalizado pelo próprio pico e o shader trabalha
+em 0–1 com ganho 0,055 — **a primeira versão multiplicava de volta pela escala
+absoluta e entregava emissão cerca de cinquenta vezes maior que a do Eco,
+estourando o chão em glifos pesados.** A cauda passa por duas oitavas de ruído
+com limiar alto, para que fique esparsa em vez de virar tapete.
+
+### Estratégia de bloqueio
+
+Volumes com 2 m ou mais de altura (55 nesta rua) formam caixas alinhadas aos
+eixos. Entre fonte e célula, 12 pontos são amostrados; a transmitância é
+`(1 − bloqueados/total)^1,6`. Não é sombra física e não pretende ser.
+
+### Eco de Contato escalável
+
+    alcance = clamp(0,82 · √(perímetro / 4), 0,62 m, 3,10 m)
+
+Sublinear pela raiz: quadruplicar o perímetro não quadruplica o alcance. Só a
+**extensão** muda — a intensidade continua sendo a mesma para todos, e a
+combinação continua por `max`. Uma segunda oitava de ruído abre lacunas dentro
+da própria máscara.
+
+### Formas complexas
+
+Descritores de primitivas em `src/world/complex-shapes.ts`, sem Three.js no
+conteúdo; `src/render/complex-geometry.ts` funde as partes numa geometria única
+por forma, para que cada objeto custe uma chamada de desenho.
+
+| Forma | Triângulos | Orçamento | Material |
+| --- | --- | --- | --- |
+| `forma-erodida` | 374 | 300–800 | pedra |
+| `mecanismo-emborcado` | 1 108 | 800–2 000 | metal oxidado |
+
+Colisão por caixa simplificada, declarada à parte e fora do eixo das rotas.
+
+### Diagnósticos acrescentados
+
+| Tecla | Diagnóstico |
+| --- | --- |
+| `G` | variação individual de cor |
+| `H` | continuidade de superfície |
+| `J` | campo luminoso cru |
+| `K` | volumes que barram a propagação |
+| `L` | isola as duas formas complexas |
+
+### Correção encontrada durante a calibração
+
+`F5` — os dois estados de iluminação na mesma posição, decididos na Fase 1.1 —
+estava mapeada mas sem tratamento desde a Fase 2: a tecla existia, o rótulo do
+diagnóstico existia, e nada acontecia. A comparação «fonte desligada × fonte
+ligada» que eu havia registrado era, portanto, inválida: as duas imagens
+mostravam o mesmo estado. O tratamento foi devolvido e as duas capturas
+refeitas; agora 2,886 % dos pixels mudam entre elas.

@@ -31,6 +31,16 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-19 — Fase 2.1: cor semântica, continuidade de superfície e iluminação econômica
+
+Instruções humanas explícitas do responsável, na tarefa da Fase 2.1. Nenhum portão é aprovado por esta entrada.
+
+- **Cor semântica.** A cor representa material, estado, função ou origem, iluminação e atmosfera. Objetos do mesmo material podem receber variação discreta de tom, brilho e saturação — determinística por seed e identidade, dentro da família, nunca o único canal de distinção e nunca alterada por movimento de câmera ou ativação de setor.
+- **Continuidade de superfície.** Quando um objeto é perceptível, suas faces expostas voltadas para cima preservam informação mínima do volume. Não é luz, não torna o objeto emissivo, não é lanterna de câmera, não ilumina o chão aos pés, não revela faces ocultas e não atravessa oclusores. Uma face superior visível não pode desaparecer enquanto as laterais do mesmo volume continuam perceptíveis.
+- **Iluminação perceptiva e econômica.** A luz pertence ao mundo, é semanticamente justificável e nasce de simplificação inteligente. Sem iluminação global pesada, sombras detalhadas por objeto, traçado de raios ou reflexão complexa.
+- **Aprovação humana:** 19/08/2026, na tarefa da Fase 2.1.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+
 ## 2026-08-19 — Fase 2: A Rua Interrompida
 
 - **Decisão afetada:** nenhuma decisão fechada é revogada. Primeira aplicação das regras perceptivas a um lugar, em vez de a um laboratório.

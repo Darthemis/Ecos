@@ -59,7 +59,7 @@ export function startGame(root: HTMLElement): Game {
 
   const renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
 
-  const view = createSceneView(ACTIVE_SCENE);
+  const view = createSceneView(ACTIVE_SCENE, renderer);
   const ascii = createAsciiPass();
   const audio = createAmbience(ACTIVE_SCENE);
   const metrics = new Metrics();
@@ -81,6 +81,11 @@ export function startGame(root: HTMLElement): Game {
   let echoOn = true;
   let echoLevel: EchoLevel = DEFAULT_ECHO_LEVEL;
   let sectorDebug = false;
+  let variationOn = true;
+  let continuityOn = true;
+  let fieldDebug = false;
+  let blockerDebug = false;
+  let isolateComplex = false;
   let flickerReduced = DEFAULT_COMFORT.flickerReduced;
   let state = createWorldState();
   let accumulator = 0;
@@ -160,6 +165,14 @@ export function startGame(root: HTMLElement): Game {
       case "toggleDiagnostics":
         if (diagnostics !== null) diagnostics.setVisible(diagnostics.element.hidden);
         break;
+      case "toggleWorldLights":
+        // Dois estados de iluminacao na mesma posicao: com e sem as fontes do
+        // mundo. Diagnostico apenas.
+        if (DIAGNOSTICS_ENABLED) {
+          worldLights = !worldLights;
+          view.setWorldLightsEnabled(worldLights);
+        }
+        break;
       case "toggleEcho":
         if (DIAGNOSTICS_ENABLED) {
           echoOn = !echoOn;
@@ -170,6 +183,36 @@ export function startGame(root: HTMLElement): Game {
         if (DIAGNOSTICS_ENABLED) {
           echoLevel = nextEchoLevel(echoLevel);
           view.setEchoLevel(echoLevel);
+        }
+        break;
+      case "toggleVariation":
+        if (DIAGNOSTICS_ENABLED) {
+          variationOn = !variationOn;
+          view.setVariationEnabled(variationOn);
+        }
+        break;
+      case "toggleContinuity":
+        if (DIAGNOSTICS_ENABLED) {
+          continuityOn = !continuityOn;
+          view.setContinuityEnabled(continuityOn);
+        }
+        break;
+      case "toggleFieldDebug":
+        if (DIAGNOSTICS_ENABLED) {
+          fieldDebug = !fieldDebug;
+          view.setFieldDebug(fieldDebug);
+        }
+        break;
+      case "toggleBlockerDebug":
+        if (DIAGNOSTICS_ENABLED) {
+          blockerDebug = !blockerDebug;
+          view.setBlockerDebug(blockerDebug);
+        }
+        break;
+      case "toggleIsolateComplex":
+        if (DIAGNOSTICS_ENABLED) {
+          isolateComplex = !isolateComplex;
+          view.setIsolateComplex(isolateComplex);
         }
         break;
       case "toggleSectorDebug":
@@ -234,6 +277,9 @@ export function startGame(root: HTMLElement): Game {
     const sectors = view.update(elapsed, state.player.position);
 
     const renderStart = performance.now();
+    // As chamadas de desenho da cena precisam ser lidas antes do passe ASCII,
+    // que soma a sua propria e mascararia o custo real.
+    let sceneDrawCalls = 0;
     if (uniformProbe) {
       renderer.setRenderTarget(target);
       renderer.setClearColor(0x6a6a6a, 1);
@@ -246,6 +292,7 @@ export function startGame(root: HTMLElement): Game {
     } else {
       renderer.setRenderTarget(target);
       renderer.render(view.scene, view.camera);
+      sceneDrawCalls = renderer.info.render.calls;
       ascii.render(renderer, target);
     }
     metrics.recordRender(performance.now() - renderStart);
@@ -274,6 +321,16 @@ export function startGame(root: HTMLElement): Game {
         percurso: `${summary.distance.toFixed(0)} m · ${summary.seconds.toFixed(0)} s · hesitacoes ${summary.hesitations} · retornos ${summary.returns}`,
         luzes: worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
         eco: echoOn ? `${echoLevel} (${ECHO_LEVELS[echoLevel]})` : "desligado",
+        materiais: `variacao ${variationOn ? "ligada" : "desligada"} · continuidade ${continuityOn ? "ligada" : "desligada"}`,
+        geometria: (() => {
+          const r = view.render();
+          return `${r.triangles} tri · ${r.meshes} malhas · ${sceneDrawCalls} chamadas`;
+        })(),
+        campo: (() => {
+          const r = view.render();
+          return `${r.fieldCells} celulas · ${r.fieldBakeMs} ms · ${r.sources} fontes · ${r.blockers} bloqueadores${fieldDebug ? " · CRU" : ""}`;
+        })(),
+        isolamento: isolateComplex ? "SO FORMAS COMPLEXAS" : blockerDebug ? "BLOQUEADORES" : "cena completa",
         conforto: `sensibilidade ${input.sensitivity().toFixed(1)} · cintilacao ${flickerReduced ? "reduzida" : "normal"}`,
         modo: uniformProbe ? "ENTRADA UNIFORME" : showRawScene ? "3D CONVENCIONAL" : "ascii",
         audio: audio.isRunning() ? `ativo · ${audio.emitterCount()} emissores` : "aguardando gesto",

@@ -27,20 +27,25 @@ import {
   type Texture,
 } from "three";
 import { createRng } from "../core/rng";
-import type { ObstacleKind, Vec2 } from "../world/geometry";
+import { obstacleAabb, type Vec2 } from "../world/geometry";
 import type { SceneDefinition } from "../world/scene";
 import { activeSectorIds, sectorIdForPoint } from "../world/sectors";
 import { nearestContacts, type EchoLevel, ECHO_LEVELS } from "../world/contact-echo";
-import { attachContactEcho } from "./contact-echo-material";
-
-const KIND_COLOR: Record<ObstacleKind, number> = {
-  rock: 0xa8aeb6,
-  ruin: 0xe2d9bf,
-  monolith: 0x8b9fb2,
-};
+import { bakeLightField, blockersOf } from "../world/light-field";
+import { hslToHex, KIND_MATERIAL, materialColor, MATERIALS, type MaterialFamily } from "../world/materials";
+import { COMPLEX_SHAPES, shapeTriangles } from "../world/complex-shapes";
+import { attachSurfaceShading, lightFieldTexture, type SurfaceShading } from "./surface-shading";
+import { createMaterialTexture } from "./material-textures";
+import { buildComplexGeometry } from "./complex-geometry";
 
 const SAND_COLOR = 0x94703f;
 const SAND_TILE_METERS = 24;
+
+/** Claridade da continuidade de superficie, em emissao linear. */
+const CONTINUITY_STRENGTH = 0.021;
+
+/** Converte o piso ambiental declarado pela familia em emissao linear. */
+const MATERIAL_FLOOR_SCALE = 0.2;
 
 /** Ate onde os sinais distantes dos marcos precisam existir, em metros. */
 const LANDMARK_VIEW_DISTANCE = 220;
@@ -108,6 +113,16 @@ function createSandTexture(seed: number, halfExtent: number): Texture {
   return texture;
 }
 
+export type RenderReport = {
+  triangles: number;
+  meshes: number;
+  drawCalls: number;
+  sources: number;
+  fieldCells: number;
+  fieldBakeMs: number;
+  blockers: number;
+};
+
 export type SectorReport = {
   total: number;
   active: number;
@@ -127,13 +142,24 @@ export type SceneView = {
   setSectorDebug: (enabled: boolean) => void;
   /** Reduz oscilacao de luzes e pulsacoes, para conforto. */
   setFlickerReduced: (reduced: boolean) => void;
+  /** Diagnostico: variacao individual de cor ligada ou desligada. */
+  setVariationEnabled: (enabled: boolean) => void;
+  /** Diagnostico: continuidade das superficies expostas. */
+  setContinuityEnabled: (enabled: boolean) => void;
+  /** Diagnostico: campo luminoso desenhado cru sobre as superficies. */
+  setFieldDebug: (enabled: boolean) => void;
+  /** Diagnostico: destaca os volumes que barram a propagacao. */
+  setBlockerDebug: (enabled: boolean) => void;
+  /** Diagnostico: mostra apenas as duas formas complexas. */
+  setIsolateComplex: (enabled: boolean) => void;
+  render: () => RenderReport;
   /** Atualiza setores, contatos e oscilacoes. Nao altera a simulacao. */
   update: (seconds: number, viewer: Vec2) => SectorReport;
   sectors: () => SectorReport;
   dispose: () => void;
 };
 
-export function createSceneView(definition: SceneDefinition): SceneView {
+export function createSceneView(definition: SceneDefinition, renderer?: { info: { render: { calls: number } } }): SceneView {
   const scene = new Scene();
   scene.background = new Color(0x000000);
   scene.fog = new Fog(0x000000, 1, 15);
@@ -141,9 +167,45 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   const camera = new PerspectiveCamera(72, 1, 0.1, LANDMARK_VIEW_DISTANCE);
   scene.add(camera);
 
+  // O campo luminoso e assado uma unica vez, na abertura.
+  const { field, stats: fieldStats } = bakeLightField(definition);
+  const fieldTexture = lightFieldTexture(field);
+  const shadings: SurfaceShading[] = [];
+
   const sand = createSandTexture(definition.seed, definition.groundHalfExtent);
   const groundMaterial = new MeshLambertMaterial({ color: SAND_COLOR, map: sand });
-  const echo = attachContactEcho(groundMaterial);
+  const echo = attachSurfaceShading(groundMaterial, { role: "chao", field, fieldTexture });
+  shadings.push(echo);
+
+  // Uma textura por familia, compartilhada por todos os objetos dela.
+  const materialTextures = new Map<MaterialFamily, ReturnType<typeof createMaterialTexture>>();
+  const texturaDe = (family: MaterialFamily) => {
+    const existente = materialTextures.get(family);
+    if (existente !== undefined) return existente;
+    const nova = createMaterialTexture(family, definition.seed);
+    materialTextures.set(family, nova);
+    return nova;
+  };
+
+  let variationEnabled = true;
+  const objectMaterials: { material: MeshLambertMaterial; family: MaterialFamily; id: string }[] = [];
+
+  /** Material de um objeto: familia, variacao individual e padrao da superficie. */
+  const materialFor = (family: MaterialFamily, id: string): MeshLambertMaterial => {
+    const definicao = MATERIALS[family];
+    const material = new MeshLambertMaterial({
+      color: hslToHex(materialColor(family, id, definition.seed, variationEnabled)),
+      map: texturaDe(family),
+      // Resposta a luz e piso ambiental sao propriedades da familia.
+      reflectivity: definicao.lightResponse,
+    });
+    const shading = attachSurfaceShading(material, { role: "objeto", field, fieldTexture });
+    // O piso declarado pela família é uma fração; aqui vira emissão linear.
+    shading.setMaterialFloor(definicao.ambientFloor * MATERIAL_FLOOR_SCALE);
+    shadings.push(shading);
+    objectMaterials.push({ material, family, id });
+    return material;
+  };
 
   const ground = new Mesh(
     new PlaneGeometry(definition.groundHalfExtent * 2, definition.groundHalfExtent * 2),
@@ -157,10 +219,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
     const width = patch.area.maxX - patch.area.minX;
     const depth = patch.area.maxZ - patch.area.minZ;
     const top = Math.max(patch.height, patch.heightTo ?? patch.height);
-    const mesh = new Mesh(
-      new BoxGeometry(width, Math.max(0.08, top), depth),
-      new MeshLambertMaterial({ color: 0x8d7350 }),
-    );
+    const mesh = new Mesh(new BoxGeometry(width, Math.max(0.08, top), depth), materialFor("pedra", patch.id));
     mesh.position.set(
       (patch.area.minX + patch.area.maxX) / 2,
       Math.max(0.08, top) / 2 - 0.02,
@@ -172,14 +231,21 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   // Volumes, agrupados por setor para que so o relevante alimente a cena.
   const bySector = new Map<string, Mesh[]>();
   const unsectored: Mesh[] = [];
+  const hidden = new Set(definition.hiddenIds);
   for (const obstacle of definition.obstacles) {
+    // A aparencia destes vem de uma forma complexa; a caixa so colide.
+    if (hidden.has(obstacle.id)) continue;
+    const family: MaterialFamily = obstacle.material ?? KIND_MATERIAL[obstacle.kind];
     const mesh = new Mesh(
       new BoxGeometry(obstacle.size.x, obstacle.size.y, obstacle.size.z),
-      new MeshLambertMaterial({ color: KIND_COLOR[obstacle.kind] }),
+      materialFor(family, obstacle.id),
     );
     mesh.position.set(obstacle.center.x, obstacle.baseY + obstacle.size.y / 2, obstacle.center.z);
     mesh.rotation.y = obstacle.yaw;
     scene.add(mesh);
+
+    const caixa = obstacleAabb(obstacle);
+    mesh.userData.blockerKey = `${caixa.minX.toFixed(2)}:${caixa.minZ.toFixed(2)}`;
 
     const sectorId = sectorIdForPoint(definition, obstacle.center);
     if (sectorId === null) unsectored.push(mesh);
@@ -189,6 +255,16 @@ export function createSceneView(definition: SceneDefinition): SceneView {
       bySector.set(sectorId, list);
     }
   }
+
+  // Formas complexas: uma malha fundida por forma, uma chamada de desenho cada.
+  const complexMeshes = COMPLEX_SHAPES.map((shape) => {
+    const mesh = new Mesh(buildComplexGeometry(shape), materialFor(shape.material, shape.id));
+    mesh.position.set(shape.origin.x, shape.baseY, shape.origin.z);
+    mesh.rotation.y = shape.yaw;
+    scene.add(mesh);
+    return { mesh, shape };
+  });
+  const complexTriangles = COMPLEX_SHAPES.reduce((total, shape) => total + shapeTriangles(shape), 0);
 
   // Sinal distante dos marcos: sem nevoa, para existir alem do alcance visual.
   // Pequeno e alto de proposito — orienta sem acender o mundo.
@@ -232,6 +308,11 @@ export function createSceneView(definition: SceneDefinition): SceneView {
 
   let echoLevel: EchoLevel = "sutil";
   let echoOn = true;
+  let continuityOn = true;
+  let isolateComplex = false;
+  const blockerBoxes = new Set(
+    blockersOf(definition).map((b) => `${b.minX.toFixed(2)}:${b.minZ.toFixed(2)}`),
+  );
   let flickerReduced = false;
   let report: SectorReport = {
     total: definition.sectors.length,
@@ -241,14 +322,20 @@ export function createSceneView(definition: SceneDefinition): SceneView {
     objectsActive: definition.obstacles.length,
   };
 
-  const applyEcho = () => echo.setStrength(echoOn ? ECHO_LEVELS[echoLevel] : 0);
+  const applyEcho = () => echo.setEchoStrength(echoOn ? ECHO_LEVELS[echoLevel] : 0);
+  const applyContinuity = () => {
+    for (const shading of shadings) shading.setContinuityStrength(continuityOn ? CONTINUITY_STRENGTH : 0);
+  };
   applyEcho();
+  applyContinuity();
 
   return {
     scene,
     camera,
 
     setVisualRange(meters) {
+      // A continuidade some junto com a nevoa: ela pertence a percepcao.
+      for (const shading of shadings) shading.setPerceptionRange(meters);
       // O alcance mexe apenas na nevoa e no corte da camera. Nenhuma luz
       // acompanha o olhar, portanto nenhum alcance acende o chao aos pes.
       const fog = scene.fog as Fog;
@@ -263,6 +350,49 @@ export function createSceneView(definition: SceneDefinition): SceneView {
 
     setWorldLightsEnabled(enabled) {
       for (const { light } of worldLights) light.visible = enabled;
+      // O campo assado tambem responde: sem fontes, nao ha nucleo nem cauda.
+      for (const shading of shadings) shading.setLightFieldEnabled(enabled);
+    },
+
+    setVariationEnabled(enabled) {
+      variationEnabled = enabled;
+      for (const entry of objectMaterials) {
+        entry.material.color.setHex(hslToHex(materialColor(entry.family, entry.id, definition.seed, enabled)));
+      }
+    },
+
+    setContinuityEnabled(enabled) {
+      continuityOn = enabled;
+      applyContinuity();
+    },
+
+    setFieldDebug(enabled) {
+      for (const shading of shadings) shading.setLightFieldDebug(enabled);
+    },
+
+    setBlockerDebug(enabled) {
+      for (const [, meshes] of bySector) {
+        for (const mesh of meshes) {
+          const material = mesh.material as MeshLambertMaterial;
+          material.wireframe = enabled && blockerBoxes.has(mesh.userData.blockerKey as string);
+        }
+      }
+    },
+
+    setIsolateComplex(enabled) {
+      isolateComplex = enabled;
+    },
+
+    render() {
+      return {
+        triangles: complexTriangles + definition.obstacles.length * 12 + definition.heightPatches.length * 12 + 2,
+        meshes: definition.obstacles.length + definition.heightPatches.length + complexMeshes.length + beacons.length + 1,
+        drawCalls: renderer?.info.render.calls ?? 0,
+        sources: definition.lights.length,
+        fieldCells: fieldStats.cells,
+        fieldBakeMs: fieldStats.bakeMs,
+        blockers: fieldStats.blockers,
+      };
     },
 
     setEchoLevel(level) {
@@ -314,6 +444,12 @@ export function createSceneView(definition: SceneDefinition): SceneView {
       }
 
       echo.setFootprints(nearestContacts(definition.obstacles, viewer));
+
+      for (const { mesh } of complexMeshes) mesh.visible = true;
+      if (isolateComplex) {
+        for (const [, meshes] of bySector) for (const mesh of meshes) mesh.visible = false;
+        for (const mesh of unsectored) mesh.visible = false;
+      }
 
       report = {
         total: definition.sectors.length,

@@ -125,6 +125,11 @@ export type SceneDefinition = {
    * chão; apenas não são parede.
    */
   passableIds: readonly string[];
+  /**
+   * Volumes que colidem e tocam o chão, mas cuja aparência vem de uma forma
+   * complexa e não de uma caixa. O motor não desenha caixa para eles.
+   */
+  hiddenIds: readonly string[];
   heightPatches: readonly HeightPatch[];
   lights: readonly LightSource[];
   emitters: readonly SoundEmitter[];

@@ -8,7 +8,7 @@
 
 ## FASE ATIVA
 
-**Fase 2 — A Rua Interrompida: implementação técnica concluída. Portões 1 e 2 aguardando teste humano.**
+**Fase 2.1 — Calibração de materiais, volumes e iluminação: implementação técnica concluída. Portões 1 e 2 aguardando teste humano.**
 
 O que existe hoje: um percurso de cerca de 120 metros por uma rua de ruínas, em primeira pessoa e ASCII colorido sobre fundo preto. Três trechos de ritmo espacial distinto — praça aberta, corredor comprimido com curva e rampa, bacia que se abre —, duas rotas que convergem, dois marcos e um vestígio silencioso de um acontecimento passado. Alcance visual de 8, 15 ou 25 metros, radar/bússola verde, som espacial de vários emissores e medição separada de simulação e renderização.
 
@@ -100,6 +100,11 @@ Só existe em `npm run dev`. A construção de produção não contém esse cód
 | `F8` | alterna as três intensidades do Eco de Contato |
 | `F9` | bordas dos setores e planta do percurso registrado |
 | `F11` | exporta o percurso registrado em texto, no console |
+| `G` | variação individual de cor dos materiais |
+| `H` | continuidade das superfícies expostas |
+| `J` | campo luminoso cru |
+| `K` | volumes que barram a propagação da luz |
+| `L` | isola as duas formas complexas |
 
 ---
 

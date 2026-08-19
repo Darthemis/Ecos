@@ -14,6 +14,8 @@ export type ObstacleKind = "rock" | "ruin" | "monolith";
 export type Obstacle = {
   id: string;
   kind: ObstacleKind;
+  /** Familia de material. Ausente, deriva do tipo do volume. */
+  material?: import("./materials").MaterialFamily;
   center: Vec2;
   /** Extensao total em cada eixo, em metros. */
   size: { x: number; y: number; z: number };

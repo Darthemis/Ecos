@@ -36,6 +36,12 @@ export type ContactFootprint = {
   /** Deriva da identidade do objeto. Mesma identidade, mesmo padrao, sempre. */
   seed: number;
   /**
+   * Alcance do eco a partir da borda, em metros. Cresce com o perimetro do
+   * contato, de forma sublinear e com teto: uma fundacao longa espalha mais
+   * vestigios, sem ficar mais brilhante.
+   */
+  reach: number;
+  /**
    * 1 para contatos pequenos, caindo conforme a area cresce. A renderizacao usa
    * isto para elevar o limiar do ruido em fundacoes grandes: uma estrutura longa
    * recebe poucos vestigios espalhados, nunca a area inteira sob ela acesa.
@@ -62,6 +68,22 @@ export function seedFromId(id: string): number {
   return (hash % 4096) / 4096;
 }
 
+/** Alcance minimo e maximo do eco, em metros. */
+export const ECHO_REACH_MIN = 0.62;
+export const ECHO_REACH_MAX = 3.1;
+
+/** Perimetro de referencia: um bloco de um metro de lado. */
+const REFERENCE_PERIMETER = 4;
+
+/**
+ * Cresce com a raiz do perimetro — sublinear de proposito. Dobrar o tamanho de
+ * uma fundacao nao dobra o alcance do vestigio; apenas o espalha um pouco mais.
+ */
+export function reachForPerimeter(perimeter: number): number {
+  const scaled = 0.82 * Math.sqrt(Math.max(0, perimeter) / REFERENCE_PERIMETER);
+  return Math.max(ECHO_REACH_MIN, Math.min(ECHO_REACH_MAX, scaled));
+}
+
 export function contactFootprint(obstacle: Obstacle): ContactFootprint {
   const box = obstacleAabb(obstacle);
   const halfExtent = {
@@ -69,12 +91,14 @@ export function contactFootprint(obstacle: Obstacle): ContactFootprint {
     z: (box.maxZ - box.minZ) / 2,
   };
   const area = 4 * halfExtent.x * halfExtent.z;
+  const perimeter = 4 * (halfExtent.x + halfExtent.z);
 
   return {
     id: obstacle.id,
     center: { x: obstacle.center.x, z: obstacle.center.z },
     halfExtent,
     seed: seedFromId(obstacle.id),
+    reach: reachForPerimeter(perimeter),
     sparsity: Math.max(0.28, Math.min(1, 3.2 / (3.2 + area))),
   };
 }

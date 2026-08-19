@@ -40,6 +40,13 @@ Um item desta lista é resolvido por protótipo ou playtest e, ao ser resolvido,
 - **Alcance do Eco.** Os 1,15 m a partir da borda continuam experimentais. A adaptação para pés, criaturas e objetos muito pequenos foi deliberadamente adiada na Fase 2.
 - **Vestígios em criaturas.** A regra aceita qualquer objeto com área de contato conhecida, mas a Fase 1 não tem criaturas: a presença sonora é invisível de propósito. O comportamento junto a pés e patas ainda não foi visto na prática.
 
+## Abertos pela Fase 2.1
+
+- **Calibração fina dos quatro materiais.** Cores base, faixas de variação e padrões foram escolhidos por raciocínio e inspeção, não por avaliação visual humana. É justamente o que esta fase submete a julgamento.
+- **Ganho do campo luminoso** (0,055) e **força da continuidade** (0,021) são os dois números mais sensíveis da fase.
+- **Resolução do campo.** 1 m por célula basta para uma rua; um lugar maior pode exigir outra escala ou divisão por setor.
+- **LOD das formas complexas.** Não implementado: a medição não mostrou necessidade.
+
 ## Abertos pela Fase 2
 
 - **Remapeamento de teclas.** Não implementado. Um remapeamento de verdade exige uma superfície de configurações, que a própria tarefa proíbe abrir nesta fase. Fica registrado como dívida.

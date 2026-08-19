@@ -146,8 +146,8 @@ const OBSTACLES: readonly Obstacle[] = [
   ...wallAlongZ("alameda-leste-b", -14, -28, -80, 0.9, [3.6, 3.0, 3.8, 3.2, 3.5, 2.9]),
 
   block({ id: "alameda-resto-a", kind: ROCK, x: -18.0, z: -34, w: 1.5, h: 1.0, d: 1.3, yaw: 0.7 }),
-  block({ id: "alameda-resto-b", kind: RUIN, x: -15.1, z: -52, w: 1.2, h: 0.8, d: 1.6, yaw: 0.2 }),
-  block({ id: "alameda-resto-c", kind: ROCK, x: -18.1, z: -66, w: 1.8, h: 1.3, d: 1.5, yaw: 1.1 }),
+  { ...block({ id: "alameda-resto-b", kind: RUIN, x: -15.1, z: -52, w: 1.2, h: 0.8, d: 1.6, yaw: 0.2 }), material: "organico" as const },
+  { ...block({ id: "alameda-resto-c", kind: ROCK, x: -18.1, z: -66, w: 1.8, h: 1.3, d: 1.5, yaw: 1.1 }), material: "organico" as const },
 
   // ─── Revelação: bacia aberta ───
   ...wallAlongZ("bacia-oeste", -20, -80, -118, 1.0, [2.6, 1.8, 2.2, 1.4, 2.0]),
@@ -156,8 +156,8 @@ const OBSTACLES: readonly Obstacle[] = [
 
   // Marco 1 — o Mastro Inclinado. Silhueta alta que ancora a direção.
   block({ id: "mastro-base", kind: MONOLITH, x: 5, z: -104, w: 3.2, h: 1.4, d: 3.2, baseY: -0.4 }),
-  block({ id: "mastro-fuste", kind: MONOLITH, x: 5.4, z: -104.3, w: 1.1, h: 13.5, d: 1.1, baseY: 0.6, yaw: 0.22 }),
-  block({ id: "mastro-braco", kind: MONOLITH, x: 6.6, z: -104.6, w: 3.6, h: 0.5, d: 0.5, baseY: 9.4, yaw: 0.22 }),
+  { ...block({ id: "mastro-fuste", kind: MONOLITH, x: 5.4, z: -104.3, w: 1.1, h: 13.5, d: 1.1, baseY: 0.6, yaw: 0.22 }), material: "anomalo" as const },
+  { ...block({ id: "mastro-braco", kind: MONOLITH, x: 6.6, z: -104.6, w: 3.6, h: 0.5, d: 0.5, baseY: 9.4, yaw: 0.22 }), material: "anomalo" as const },
 
   // Marco 2 — o vestígio. Ver VESTIGE_SIGNALS abaixo.
   // Sinal 1: a fundação, uma linha de blocos que para de repente.
@@ -188,7 +188,12 @@ const OBSTACLES: readonly Obstacle[] = [
   block({ id: "restos-agrupados-b", kind: ROCK, x: -12.7, z: -89.8, w: 0.9, h: 0.5, d: 0.9, yaw: 0.3 }),
   block({ id: "restos-agrupados-c", kind: ROCK, x: -14.3, z: -90.2, w: 1.0, h: 0.6, d: 1.0, yaw: 1.4 }),
 
-  block({ id: "bacia-resto-a", kind: ROCK, x: 12.4, z: -92, w: 2.4, h: 1.7, d: 2.1, yaw: 0.6 }),
+  // Colisores simplificados das formas complexas. Ficam fora do eixo das rotas;
+  // a aparência vem da geometria declarada em world/complex-shapes.ts.
+  block({ id: "forma-erodida", kind: ROCK, x: -16.4, z: -96.5, w: 3.0, h: 3.4, d: 2.6, baseY: -0.3, yaw: 0.4 }),
+  { ...block({ id: "mecanismo-emborcado", kind: MONOLITH, x: 13.5, z: -96, w: 4.2, h: 2.6, d: 3.4, baseY: -0.35, yaw: -0.55 }), material: "metal-oxidado" as const },
+
+  block({ id: "bacia-resto-a", kind: ROCK, x: 8.6, z: -90.5, w: 2.4, h: 1.7, d: 2.1, yaw: 0.6 }),
   block({ id: "bacia-resto-b", kind: ROCK, x: -3.2, z: -110, w: 2.0, h: 1.4, d: 1.8, yaw: 0.9 }),
   block({ id: "bacia-resto-c", kind: RUIN, x: 13.8, z: -108, w: 1.6, h: 1.0, d: 2.4, yaw: 0.15 }),
 ];
@@ -216,6 +221,7 @@ export const PHASE2_STREET: SceneDefinition = {
   obstacles: OBSTACLES,
   // O sulco é uma marca rasa: vê-se, atravessa-se.
   passableIds: ["sulco-1", "sulco-2", "sulco-3", "sulco-4"],
+  hiddenIds: ["forma-erodida", "mecanismo-emborcado"],
 
   heightPatches: [
     // Rampa e patamar no meio da compressão: a mudança de altura muda o ritmo.
