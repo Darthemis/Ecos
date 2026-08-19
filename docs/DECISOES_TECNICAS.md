@@ -375,6 +375,15 @@ superfície mudar de cor com a distância. O fallback foi rejeitado e removido:
 o reforço agora altera somente a densidade do glifo e uma célula sem cor própria
 permanece preta.
 
+Uma segunda avaliação em movimento mostrou faixas de cor ainda presas ao
+cenário. A origem era anterior ao reforço estrutural: luzes coloridas e a
+claridade azulada do lugar alteravam o matiz difuso conforme a distância de cada
+ponto da superfície às fontes. A iluminação continua calculada normalmente,
+mas sua contribuição difusa passa a ser reduzida a luminância antes de modular
+o matiz do próprio material. Alcance, orientação, oscilação e brilho permanecem;
+somente a pintura das superfícies pela cor da luz foi retirada. Emissões
+próprias, como Eco de Contato e sinais de marco, continuam coloridas.
+
 Aumentar a faixa dinâmica do alvo — meia precisão em vez de 8 bits — resolveria
 a raiz, mas mudaria **toda** a imagem, não só a estrutura. Fica registrado em
 `EXPERIMENTOS_ABERTOS.md` como experiência isolada própria, exatamente para não

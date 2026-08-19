@@ -32,6 +32,7 @@ import type { SceneDefinition } from "../world/scene";
 import { activeSectorIds, sectorIdForPoint } from "../world/sectors";
 import { nearestContacts, type EchoLevel, ECHO_LEVELS } from "../world/contact-echo";
 import { attachContactEcho } from "./contact-echo-material";
+import { stabilizeLambertHue } from "./stable-hue-material";
 
 const KIND_COLOR: Record<ObstacleKind, number> = {
   rock: 0xa8aeb6,
@@ -146,6 +147,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   const sand = createSandTexture(definition.seed, definition.groundHalfExtent);
   const groundMaterial = new MeshLambertMaterial({ color: SAND_COLOR, map: sand });
   const echo = attachContactEcho(groundMaterial);
+  stabilizeLambertHue(groundMaterial);
 
   const ground = new Mesh(
     new PlaneGeometry(definition.groundHalfExtent * 2, definition.groundHalfExtent * 2),
@@ -161,7 +163,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
     const top = Math.max(patch.height, patch.heightTo ?? patch.height);
     const mesh = new Mesh(
       new BoxGeometry(width, Math.max(0.08, top), depth),
-      new MeshLambertMaterial({ color: 0x8d7350 }),
+      stabilizeLambertHue(new MeshLambertMaterial({ color: 0x8d7350 })),
     );
     mesh.position.set(
       (patch.area.minX + patch.area.maxX) / 2,
@@ -177,7 +179,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   for (const obstacle of definition.obstacles) {
     const mesh = new Mesh(
       new BoxGeometry(obstacle.size.x, obstacle.size.y, obstacle.size.z),
-      new MeshLambertMaterial({ color: KIND_COLOR[obstacle.kind] }),
+      stabilizeLambertHue(new MeshLambertMaterial({ color: KIND_COLOR[obstacle.kind] })),
     );
     mesh.position.set(obstacle.center.x, obstacle.baseY + obstacle.size.y / 2, obstacle.center.z);
     mesh.rotation.y = obstacle.yaw;

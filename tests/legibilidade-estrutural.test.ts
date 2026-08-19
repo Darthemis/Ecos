@@ -5,7 +5,14 @@
 // e verificam cada regra perceptiva declarada na tarefa.
 
 import { readFileSync } from "node:fs";
+import {
+  MeshLambertMaterial,
+  type WebGLProgramParametersWithUniforms,
+  type WebGLRenderer,
+} from "three";
 import { describe, expect, it } from "vitest";
+import { attachContactEcho } from "../src/render/contact-echo-material";
+import { stabilizeLambertHue } from "../src/render/stable-hue-material";
 import {
   fogVisibility,
   inverseDepth,
@@ -253,6 +260,36 @@ describe("aplicação do reforço", () => {
     const passe = readFileSync("src/render/ascii-pass.ts", "utf8");
     expect(passe).toContain("vec3 hue = peak > 0.001 ? src / peak : vec3(0.0);");
     expect(passe).not.toMatch(/matizEstrutural|uAmbientTint|setAmbientTint|corDe\(/);
+  });
+
+  it("luzes alteram o brilho, mas preservam o matiz do material", () => {
+    const material = readFileSync("src/render/stable-hue-material.ts", "utf8");
+    const cena = readFileSync("src/render/scene-view.ts", "utf8");
+
+    expect(material).toContain("ecosLitLuminance");
+    expect(material).toContain("ecosMaterialHue");
+    expect(material).toContain("vec3 outgoingLight = ecosStableDiffuse + totalEmissiveRadiance;");
+    expect(cena.match(/stabilizeLambertHue\(/g)).toHaveLength(3);
+  });
+
+  it("preservação de matiz e Eco de Contato compõem o mesmo shader", () => {
+    const material = new MeshLambertMaterial();
+    attachContactEcho(material);
+    stabilizeLambertHue(material);
+
+    const shader = {
+      uniforms: {},
+      vertexShader: "#include <begin_vertex>",
+      fragmentShader: [
+        "#include <emissivemap_fragment>",
+        "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;",
+      ].join("\n"),
+    } as unknown as WebGLProgramParametersWithUniforms;
+
+    material.onBeforeCompile(shader, {} as WebGLRenderer);
+    expect(shader.vertexShader).toContain("vEchoWorld");
+    expect(shader.fragmentShader).toContain("totalEmissiveRadiance += uEchoColor");
+    expect(shader.fragmentShader).toContain("vec3 outgoingLight = ecosStableDiffuse + totalEmissiveRadiance;");
   });
 
   it("uma célula clara quase não muda — nada de halo", () => {

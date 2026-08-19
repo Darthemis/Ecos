@@ -136,9 +136,14 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
   vizinhas ou da luz ambiente. Ele fazia superfícies mudarem de cor conforme a
   distância. O reforço estrutural passa a alterar somente a densidade do glifo;
   a faixa dinâmica permanece como experimento separado.
+- **Segunda correção após travessia:** as faixas restantes estavam ancoradas nas
+  luzes coloridas do cenário, não na câmera nem no detector estrutural. A luz
+  continua alterando brilho e densidade, mas o matiz difuso passa a pertencer
+  somente ao material. Emissões próprias permanecem coloridas.
 - **GDD atualizado:** não aplicável.
 - **Impacto no código:** `src/render/structural-legibility.ts`,
   `src/render/structure-pass.ts`, `src/render/ascii-pass.ts`,
+  `src/render/stable-hue-material.ts`,
   `src/render/grid.ts`, `src/render/scene-view.ts`, `src/app/game.ts`,
   `src/app/diagnostic-commands.ts`, `src/core/input.ts`. Simulação, colisão,
   áudio, radar, setores, rotas e determinismo não foram tocados.
