@@ -249,6 +249,12 @@ describe("alcance e oclusão", () => {
 });
 
 describe("aplicação do reforço", () => {
+  it("não inventa matiz para uma célula sem cor própria", () => {
+    const passe = readFileSync("src/render/ascii-pass.ts", "utf8");
+    expect(passe).toContain("vec3 hue = peak > 0.001 ? src / peak : vec3(0.0);");
+    expect(passe).not.toMatch(/matizEstrutural|uAmbientTint|setAmbientTint|corDe\(/);
+  });
+
   it("uma célula clara quase não muda — nada de halo", () => {
     expect(reinforce(0.92, STRUCTURE.teto)).toBeLessThan(0.98);
     expect(reinforce(0.92, STRUCTURE.teto) - 0.92).toBeLessThan(0.06);

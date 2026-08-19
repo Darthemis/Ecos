@@ -14,7 +14,6 @@ import {
   Scene,
   ShaderMaterial,
   Vector2,
-  Vector3,
   type Texture,
   type WebGLRenderer,
   type WebGLRenderTarget,
@@ -41,46 +40,10 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform float uStructure;
   uniform float uMaskOnly;
   uniform float uSource;
-  uniform vec3 uAmbientTint;
 
   varying vec2 vUv;
 
 ${structureDefines()}
-
-  const float EST_EPS = 1e-6;
-
-  vec3 corDe(vec2 cell) {
-    vec2 fixa = clamp(cell, vec2(0.0), uGrid - 1.0);
-    return pow(max(texture2D(uScene, (fixa + 0.5) / uGrid).rgb, 0.0), vec3(1.0 / 2.2));
-  }
-
-  // Matiz que o reforco estrutural usa.
-  //
-  // O alvo de renderizacao tem 8 bits e guarda luz linear: tudo abaixo de
-  // 1/255 vira exatamente zero, e a faixa em que este mundo vive esta quase
-  // toda ali. Uma celula assim nao tem matiz proprio — dividir por zero daria
-  // preto, e o reforco sumiria justamente nas faces escuras, que sao as que
-  // mais precisam dele. Entao a aresta herda a cor da parte iluminada mais
-  // proxima do mesmo corpo; se o corpo inteiro estiver abaixo do piso, ela usa
-  // a cor da propria luz ambiente do lugar. Em nenhum caso inventa cor nova.
-  vec3 matizEstrutural(vec2 cell, vec3 propria, float pico) {
-    if (pico > 0.001) return propria / pico;
-
-    vec3 melhor = vec3(0.0);
-    float melhorPico = 0.0;
-    vec2 vizinhas[4];
-    vizinhas[0] = cell + vec2(-1.0, 0.0);
-    vizinhas[1] = cell + vec2( 1.0, 0.0);
-    vizinhas[2] = cell + vec2( 0.0, 1.0);
-    vizinhas[3] = cell + vec2( 0.0, -1.0);
-    for (int i = 0; i < 4; i++) {
-      vec3 c = corDe(vizinhas[i]);
-      float p = max(c.r, max(c.g, c.b));
-      if (p > melhorPico) { melhorPico = p; melhor = c; }
-    }
-    if (melhorPico > 0.001) return melhor / melhorPico;
-    return uAmbientTint;
-  }
 
   void main() {
     vec2 cell = floor(vUv * uGrid);
@@ -117,8 +80,6 @@ ${structureDefines()}
     // distinguiveis por dois canais e nao apenas por brilho.
     float peak = max(src.r, max(src.g, src.b));
     vec3 hue = peak > 0.001 ? src / peak : vec3(0.0);
-    // Onde ha estrutura e a celula nao tem cor propria, o matiz vem do corpo.
-    if (estrutura > 0.001 && peak <= 0.001) hue = matizEstrutural(cell, src, peak);
     vec3 color = hue * mix(0.45, 1.0, shaped);
 
     if (uMaskOnly > 0.5) {
@@ -143,8 +104,6 @@ export type AsciiPass = {
   setStructureMask: (enabled: boolean) => void;
   /** Diagnostico: isola uma parte do sinal. */
   setStructureSource: (source: StructureSource) => void;
-  /** Cor da luz ambiente do lugar. So e usada onde o corpo inteiro e preto. */
-  setAmbientTint: (r: number, g: number, b: number) => void;
   dispose: () => void;
 };
 
@@ -163,7 +122,6 @@ export function createAsciiPass(): AsciiPass {
       uStructure: { value: 1 },
       uMaskOnly: { value: 0 },
       uSource: { value: 0 },
-      uAmbientTint: { value: new Vector3(0.72, 0.82, 1) },
     },
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
@@ -203,9 +161,6 @@ export function createAsciiPass(): AsciiPass {
     },
     setStructureSource(source) {
       material.uniforms.uSource!.value = SOURCE_CODE[source];
-    },
-    setAmbientTint(r, g, b) {
-      (material.uniforms.uAmbientTint!.value as Vector3).set(r, g, b);
     },
     dispose() {
       geometry.dispose();

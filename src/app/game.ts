@@ -200,7 +200,6 @@ export function startGame(root: HTMLElement): Game {
   window.addEventListener("resize", resize);
   resize();
   applyVisualRange(DEFAULT_VISUAL_RANGE);
-  ascii.setAmbientTint(...view.ambientTint());
 
   const frame = () => {
     if (!running) return;

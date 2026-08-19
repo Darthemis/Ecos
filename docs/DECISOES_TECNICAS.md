@@ -369,12 +369,11 @@ abaixo de 1/255 em linear. Uma face sem fonte próxima chega ao alvo como zero
 exato — sem matiz, portanto sem nada que o reforço possa adensar. Medido na cena
 3D correspondente, a face frontal da rampa a 2 m vale 0,32 em 255.
 
-A correção **em escopo** foi dar matiz ao termo estrutural: a aresta herda a cor
-da parte iluminada mais próxima do mesmo corpo e, se o corpo inteiro estiver
-abaixo do piso, usa a cor da própria luz ambiente do lugar, calculada dos dados
-da cena. Em nenhum caso inventa cor. Isso levou as células detectadas e
-invisíveis de 54% para 32% nas cenas próximas; o resto é sinal fraco que
-arredonda para o mesmo glifo, o que é o comportamento pretendido.
+Uma tentativa inicial deu matiz ao termo estrutural copiando a célula iluminada
+vizinha ou a cor ambiente. A avaliação humana mostrou que isso fazia a mesma
+superfície mudar de cor com a distância. O fallback foi rejeitado e removido:
+o reforço agora altera somente a densidade do glifo e uma célula sem cor própria
+permanece preta.
 
 Aumentar a faixa dinâmica do alvo — meia precisão em vez de 8 bits — resolveria
 a raiz, mas mudaria **toda** a imagem, não só a estrutura. Fica registrado em

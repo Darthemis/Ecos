@@ -132,6 +132,10 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
   fim, ou seja, não há linha presa à tela.
 - **Aprovação humana:** pendente. Esta entrada registra a implementação, não a
   aprovação visual.
+- **Correção após avaliação:** removido o fallback que copiava matiz de células
+  vizinhas ou da luz ambiente. Ele fazia superfícies mudarem de cor conforme a
+  distância. O reforço estrutural passa a alterar somente a densidade do glifo;
+  a faixa dinâmica permanece como experimento separado.
 - **GDD atualizado:** não aplicável.
 - **Impacto no código:** `src/render/structural-legibility.ts`,
   `src/render/structure-pass.ts`, `src/render/ascii-pass.ts`,
