@@ -69,7 +69,6 @@ export type Landmark = {
    * ponto unico sai do enquadramento quando o jogador se aproxima. */
   beaconBase: number;
   beaconHeight: number;
-  beaconColor: number;
   /** Meia largura do sinal distante, em metros. */
   beaconHalfWidth: number;
   segment: SegmentId;
@@ -159,3 +158,4 @@ export function segmentAt(scene: SceneDefinition, position: Vec2): SegmentId | n
   }
   return null;
 }
+

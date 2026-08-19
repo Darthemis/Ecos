@@ -188,6 +188,7 @@ describe("marcos e vestigio", () => {
     expect(mastro.beaconHeight).toBeGreaterThan(alturaDosMuros * 0.7);
     for (const landmark of scene.landmarks) {
       expect(landmark.beaconHalfWidth).toBeLessThan(0.6);
+      expect(landmark).not.toHaveProperty("beaconColor");
     }
   });
 
@@ -355,3 +356,4 @@ describe("travessia com colisao real", () => {
     expect(blocked(resultado.fim.player.position, PLAYER_RADIUS, colliders)).toBe(false);
   });
 });
+

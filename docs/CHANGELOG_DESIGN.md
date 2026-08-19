@@ -140,6 +140,10 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
   luzes coloridas do cenário, não na câmera nem no detector estrutural. A luz
   continua alterando brilho e densidade, mas o matiz difuso passa a pertencer
   somente ao material. Emissões próprias permanecem coloridas.
+- **Terceira correção após diagnóstico `F5`/`F7`:** as cores que permaneceram
+  eram os traços distantes dos marcos, desenhados sem névoa em vermelho/laranja
+  e violeta. Eles continuam orientando por forma e posição, mas passam a ser
+  neutros; a distância não recebe mais uma cor própria.
 - **GDD atualizado:** não aplicável.
 - **Impacto no código:** `src/render/structural-legibility.ts`,
   `src/render/structure-pass.ts`, `src/render/ascii-pass.ts`,

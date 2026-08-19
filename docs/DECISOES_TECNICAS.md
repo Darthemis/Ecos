@@ -382,7 +382,13 @@ ponto da superfície às fontes. A iluminação continua calculada normalmente,
 mas sua contribuição difusa passa a ser reduzida a luminância antes de modular
 o matiz do próprio material. Alcance, orientação, oscilação e brilho permanecem;
 somente a pintura das superfícies pela cor da luz foi retirada. Emissões
-próprias, como Eco de Contato e sinais de marco, continuam coloridas.
+próprias, como o Eco de Contato, continuam coloridas.
+
+Os traços distantes dos marcos eram outra origem independente: volumes básicos
+vermelho/laranja e violeta, sem névoa, desenhados para orientação além do alcance
+visual. Como a avaliação os leu como mais uma faixa de cor determinada pela
+distância, os traços permanecem sem névoa e com a mesma geometria, mas passam a
+ser neutros. A cor só volta a existir no volume real do marco.
 
 Aumentar a faixa dinâmica do alvo — meia precisão em vez de 8 bits — resolveria
 a raiz, mas mudaria **toda** a imagem, não só a estrutura. Fica registrado em

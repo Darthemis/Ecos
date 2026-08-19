@@ -42,6 +42,7 @@ const KIND_COLOR: Record<ObstacleKind, number> = {
 
 const SAND_COLOR = 0x94703f;
 const SAND_TILE_METERS = 24;
+const DISTANT_BEACON_COLOR = 0xffffff;
 
 /** Ate onde os sinais distantes dos marcos precisam existir, em metros. */
 const LANDMARK_VIEW_DISTANCE = 220;
@@ -195,12 +196,13 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   }
 
   // Sinal distante dos marcos: sem nevoa, para existir alem do alcance visual.
-  // Pequeno e alto de proposito — orienta sem acender o mundo.
+  // Pequeno, alto e neutro de proposito — orienta sem acender nem pintar o
+  // mundo. A cor pertence ao volume real, nao a sua representacao distante.
   const beacons = definition.landmarks.map((landmark) => {
     const altura = Math.max(0.4, landmark.beaconHeight - landmark.beaconBase);
     const mesh = new Mesh(
       new BoxGeometry(landmark.beaconHalfWidth * 2, altura, landmark.beaconHalfWidth * 2),
-      new MeshBasicMaterial({ color: landmark.beaconColor, fog: false }),
+      new MeshBasicMaterial({ color: DISTANT_BEACON_COLOR, fog: false }),
     );
     mesh.position.set(landmark.position.x, landmark.beaconBase + altura / 2, landmark.position.z);
     scene.add(mesh);
