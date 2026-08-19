@@ -12,6 +12,7 @@
 // Por isso as setas deixaram de ser atalho de caminhada: caminhar e sempre WASD.
 
 import { clampAxis, type FrameIntent } from "./intent";
+import { adjustSensitivity, SENSITIVITY_DEFAULT } from "./settings";
 
 /** Radianos por pixel de deslocamento do apontador. */
 const LOOK_SENSITIVITY = 0.0022;
@@ -22,7 +23,7 @@ const LOOK_SENSITIVITY = 0.0022;
 const KEY_YAW_RATE = 1.05;
 const KEY_PITCH_RATE = 0.62;
 
-export type InputCommand = "cycleRange" | "range8" | "range15" | "range25" | "toggleDiagnostics" | "toggleRawScene" | "toggleUniformProbe" | "toggleWorldLights" | "toggleEcho" | "cycleEchoLevel" | "toggleProbeSuspension";
+export type InputCommand = "cycleRange" | "range8" | "range15" | "range25" | "toggleDiagnostics" | "toggleRawScene" | "toggleUniformProbe" | "toggleWorldLights" | "toggleEcho" | "cycleEchoLevel" | "toggleSectorDebug" | "toggleFlickerReduction" | "exportRoute" | "sensitivityDown" | "sensitivityUp";
 
 /** Como o jogador olhou por ultimo. Serve a indicacao na tela. */
 export type LookMode = "pointerLock" | "drag" | "keys" | "idle";
@@ -34,6 +35,9 @@ export type InputSource = {
   /** Falso quando o ambiente recusou a captura do ponteiro. */
   pointerLockAvailable: () => boolean;
   onCommand: (handler: (command: InputCommand) => void) => void;
+  /** Multiplicador da visada, ajustável em execução. */
+  sensitivity: () => number;
+  setSensitivity: (value: number) => void;
   onFirstGesture: (handler: () => void) => void;
   dispose: () => void;
 };
@@ -49,7 +53,11 @@ const COMMAND_KEYS: Record<string, InputCommand> = {
   F6: "toggleUniformProbe",
   F7: "toggleEcho",
   F8: "cycleEchoLevel",
-  F9: "toggleProbeSuspension",
+  F9: "toggleSectorDebug",
+  F10: "toggleFlickerReduction",
+  F11: "exportRoute",
+  Minus: "sensitivityDown",
+  Equal: "sensitivityUp",
 };
 
 const TURN_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
@@ -68,6 +76,7 @@ export function createInputSource(target: HTMLElement): InputSource {
   let lastX = 0;
   let lastY = 0;
   let mode: LookMode = "idle";
+  let sensitivity = SENSITIVITY_DEFAULT;
 
   const locked = () => document.pointerLockElement === target;
 
@@ -82,6 +91,9 @@ export function createInputSource(target: HTMLElement): InputSource {
     const command = COMMAND_KEYS[event.code];
     if (command !== undefined) {
       event.preventDefault();
+      // A sensibilidade é do próprio olhar: resolvida aqui, não no jogo.
+      if (command === "sensitivityDown") sensitivity = adjustSensitivity(sensitivity, -1);
+      if (command === "sensitivityUp") sensitivity = adjustSensitivity(sensitivity, 1);
       for (const handler of commandHandlers) handler(command);
       return;
     }
@@ -133,16 +145,16 @@ export function createInputSource(target: HTMLElement): InputSource {
 
   const onPointerMove = (event: PointerEvent) => {
     if (locked()) {
-      yawDelta += event.movementX * LOOK_SENSITIVITY;
-      pitchDelta += event.movementY * LOOK_SENSITIVITY;
+      yawDelta += event.movementX * LOOK_SENSITIVITY * sensitivity;
+      pitchDelta += event.movementY * LOOK_SENSITIVITY * sensitivity;
       mode = "pointerLock";
       return;
     }
 
     if (!dragging || dragPointer !== event.pointerId) return;
 
-    yawDelta += (event.clientX - lastX) * LOOK_SENSITIVITY;
-    pitchDelta += (event.clientY - lastY) * LOOK_SENSITIVITY;
+    yawDelta += (event.clientX - lastX) * LOOK_SENSITIVITY * sensitivity;
+    pitchDelta += (event.clientY - lastY) * LOOK_SENSITIVITY * sensitivity;
     lastX = event.clientX;
     lastY = event.clientY;
     mode = "drag";
@@ -189,8 +201,8 @@ export function createInputSource(target: HTMLElement): InputSource {
       const turn = axis(["ArrowRight"], ["ArrowLeft"]);
       const tilt = axis(["ArrowDown"], ["ArrowUp"]);
       if (turn !== 0 || tilt !== 0) {
-        yawDelta += turn * KEY_YAW_RATE * deltaSeconds;
-        pitchDelta += tilt * KEY_PITCH_RATE * deltaSeconds;
+        yawDelta += turn * KEY_YAW_RATE * deltaSeconds * sensitivity;
+        pitchDelta += tilt * KEY_PITCH_RATE * deltaSeconds * sensitivity;
         mode = "keys";
       }
 
@@ -210,6 +222,12 @@ export function createInputSource(target: HTMLElement): InputSource {
     },
     pointerLockAvailable() {
       return lockAvailable;
+    },
+    sensitivity() {
+      return sensitivity;
+    },
+    setSensitivity(value) {
+      sensitivity = value;
     },
     onCommand(handler) {
       commandHandlers.push(handler);

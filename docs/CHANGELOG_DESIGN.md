@@ -31,6 +31,25 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-19 — Fase 2: A Rua Interrompida
+
+- **Decisão afetada:** nenhuma decisão fechada é revogada. Primeira aplicação das regras perceptivas a um lugar, em vez de a um laboratório.
+- **O que passa a existir:** um percurso de ~120 m em três trechos (praça aberta, corredor comprimido com curva e rampa, bacia que se abre), duas rotas que convergem, dois marcos e um vestígio ambiental fixo e autoral.
+- **Marcos além do alcance visual.** Um marco precisa existir para além da névoa, senão não há orientação possível num mundo de visão curta. A solução: uma **representação simplificada sem névoa** — um traço vertical fino, cuja largura acompanha a distância para não sumir na resolução interna reduzida. Não é luz na câmera e não acende o mundo. De perto, o marco é o volume de verdade.
+- **O vestígio** (`fundacao-interrompida`) tem cinco sinais coerentes: a linha de fundação que para, a abertura no ponto do assento, o sulco de arrasto, o bloco arrancado caído ao sul e o objeto fora da linha no fim do rastro. Nada explica o acontecimento; admite mais de uma leitura. Fica orientado a dados, para substituição futura por vestígios causais sistêmicos.
+- **Aprovação humana:** tarefa F2-001, autorizada pelo responsável em 19/08/2026, com adiamento deliberado do teste do Portão 1.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+- **Impacto no código:** ver `DECISOES_TECNICAS.md`. O laboratório da Fase 1 (`desert-scene`, `desert-view`, `presence-audio`) foi substituído por `phase2-street`, `scene-view` e `ambience`.
+
+## 2026-08-19 — Fase 2 autorizada antes do teste do Portão 1, e fechamento da Fase 1.1
+
+- **Decisão afetada:** ordem dos portões do Plano §14 e intensidade padrão do Eco de Contato.
+- **Adiamento deliberado do Portão 1.** O responsável autorizou iniciar a Fase 2 antes do teste humano previsto para o fim da Fase 1. Isto é um **adiamento do teste, não uma aprovação do portão**: os critérios do Portão 1 continuam pendentes e serão avaliados junto com os do Portão 2, num único ciclo de teste humano depois da Fase 2. Nenhum agente pode declarar o Portão 1 aprovado.
+- **Eco de Contato:** o nível `sutil` (0,016 de emissão linear) passa a ser o padrão jogável provisório. `intermediario` (0,030) e `legivel` (0,052) permanecem apenas como diagnóstico em `F8`. O alcance de 1,15 m continua experimental: a adaptação para pés, criaturas e objetos muito pequenos fica explicitamente adiada.
+- **Aprovação humana:** solicitada pelo responsável em 19/08/2026, na tarefa F2-001.
+- **GDD atualizado:** não aplicável — GDD, Plano e seus hashes permanecem intactos.
+- **Impacto no código:** `src/world/contact-echo.ts`, `tests/contact-echo.test.ts`.
+
 ## 2026-08-19 — Eco de Contato (experiência provisória)
 
 - **Decisão afetada:** nenhuma. É uma **experiência**, não uma decisão fechada: entra em `EXPERIMENTOS_ABERTOS.md` e só migra para `DECISOES_FECHADAS.md` depois de avaliação humana.

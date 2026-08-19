@@ -181,3 +181,71 @@ e — decisivamente — com a entrada uniforme, onde não há cena alguma. Duas
 capturas tiradas sem intervalo nenhum sobre esse quadro constante ainda diferem
 em 0,024%. É ruído do caminho de captura em rasterização por software; julgar
 cintilação exige hardware real.
+
+---
+
+## Fase 2 — A Rua Interrompida
+
+### Cena como dado
+
+`src/world/scene.ts` define o tipo de um lugar; `src/content/phase2-street.ts` é
+o lugar; `src/content/active-scene.ts` é o único ponto onde ele é escolhido.
+Nenhum sistema possui condicional para esta rua. O conteúdo não importa Three.js,
+DOM nem entrada.
+
+O laboratório da Fase 1 foi substituído, não duplicado: `desert-scene.ts`,
+`desert-view.ts` e `presence-audio.ts` deram lugar a `phase2-street.ts`,
+`scene-view.ts` e `ambience.ts`. Manter os dois seria código morto.
+
+### Degraus sem motor de física
+
+A altura do chão é uma função de `(x, z)` definida por regiões de dados
+(`src/world/terrain.ts`). O corpo acompanha essa altura; uma subida maior que
+`MAX_STEP_UP` (0,45 m) barra o passo em vez de teleportar. **Limitação
+registrada:** como a altura tem valor único por ponto, não existe passagem por
+baixo de nada — um túnel com terreno por cima exigiria mudança arquitetural
+desproporcional para esta fase. Nenhuma dependência foi acrescentada.
+
+### Volumes atravessáveis
+
+Um sulco de arrasto tem 20 cm de altura e não deve barrar ninguém.
+`SceneDefinition.passableIds` lista volumes que se veem mas não colidem. Eles
+continuam produzindo Eco de Contato, porque tocam o chão.
+
+### Setores
+
+`src/world/sectors.ts` é puro e decide quais setores alimentam a cena
+detalhada. **A colisão consulta todos os volumes, sempre**: ligar ou desligar um
+setor muda o que se desenha, nunca o que o corpo encontra. Um ponto fora de
+qualquer setor cai no mais próximo, para que nada suma na borda.
+
+### Marcos além da névoa — dois defeitos encontrados em execução
+
+Um marco distante quase não funcionou, por duas razões que só apareceram jogando:
+
+1. **O corte da câmera era `alcance + 6`.** Com 15 m de alcance, o mastro a
+   114 m era descartado do tronco de visão antes que a névoa tivesse qualquer
+   papel. O corte passou a ser fixo em 220 m; quem escurece o mundo é a névoa.
+2. **O sinal ficava menor que uma célula da grade.** A 114 m, 0,6 m de largura
+   dá 0,3° — abaixo dos 0,64° de uma célula, então desaparecia. A largura do
+   sinal passou a acompanhar a distância (fator de 1 a 8), mantendo a altura: o
+   marco continua sendo um traço vertical.
+
+Um sinal que fosse um ponto único também saía do enquadramento ao se aproximar,
+por isso ele é um traço que vai de perto do chão até o alto.
+
+### Registro de percurso
+
+`src/diagnostics/route-log.ts` amostra a posição a cada 0,35 s, infere trecho e
+rota da própria geometria e conta hesitações e retornos. Local, sem rede, sem
+backend, sem nada sobre a pessoa. Recebe cópias e não devolve nada à simulação —
+verificado por teste que compara o estado com e sem registro.
+
+### Diagnósticos acrescentados
+
+| Tecla | Diagnóstico |
+| --- | --- |
+| `F9` | bordas dos setores e planta do percurso registrado |
+| `F10` | redução de cintilação (conforto, vale também no jogo normal) |
+| `F11` | exporta o percurso em texto no console |
+| `−` `=` | sensibilidade da visada (conforto, vale no jogo normal) |

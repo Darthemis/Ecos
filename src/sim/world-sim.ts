@@ -1,32 +1,33 @@
 // Simulacao. Avanca em ticks de duracao fixa, nunca le o relogio de parede e
 // nao conhece Three.js, DOM ou taxa de quadros (AGENT_RULES §5).
+//
+// Le a cena ativa como dado. Setores nao existem aqui: a colisao consulta todos
+// os volumes, sempre — ligar ou desligar um setor muda o que se desenha, nunca
+// o que o corpo encontra.
 
 import { TICK_SECONDS } from "../core/fixed-step";
 import { clampAxis, type FrameIntent } from "../core/intent";
-import {
-  OBSTACLES,
-  PLAYER_SPAWN,
-  PLAYER_SPAWN_YAW,
-  PRESENCE_PATH,
-  PRESENCE_SPEED,
-} from "../content/desert-scene";
+import { ACTIVE_SCENE, PRESENCE_PATH, PRESENCE_SPEED } from "../content/active-scene";
 import { obstacleAabb, resolveMove, type Aabb } from "../world/geometry";
+import type { SceneDefinition } from "../world/scene";
+import { canStepFrom, groundHeightAt } from "../world/terrain";
 import { pointOnLoop } from "./presence";
-import {
-  MAX_PITCH,
-  PLAYER_RADIUS,
-  WALK_SPEED,
-  type WorldState,
-} from "./state";
+import { MAX_PITCH, PLAYER_RADIUS, WALK_SPEED, type WorldState } from "./state";
 
-export const COLLIDERS: readonly Aabb[] = OBSTACLES.map(obstacleAabb);
+export function collidersOf(scene: SceneDefinition): Aabb[] {
+  const passable = new Set(scene.passableIds);
+  return scene.obstacles.filter((obstacle) => !passable.has(obstacle.id)).map(obstacleAabb);
+}
 
-export function createWorldState(): WorldState {
+export const COLLIDERS: readonly Aabb[] = collidersOf(ACTIVE_SCENE);
+
+export function createWorldState(scene: SceneDefinition = ACTIVE_SCENE): WorldState {
   return {
     tick: 0,
     player: {
-      position: { ...PLAYER_SPAWN },
-      yaw: PLAYER_SPAWN_YAW,
+      position: { ...scene.spawn },
+      groundY: groundHeightAt(scene, scene.spawn),
+      yaw: scene.spawnYaw,
       pitch: 0,
     },
     presence: {
@@ -44,7 +45,12 @@ export function applyLook(state: WorldState, intent: FrameIntent): WorldState {
 }
 
 /** Um tick de simulacao. Puro: mesmo estado e mesma intencao, mesmo resultado. */
-export function stepOnce(state: WorldState, intent: FrameIntent, colliders: readonly Aabb[] = COLLIDERS): WorldState {
+export function stepOnce(
+  state: WorldState,
+  intent: FrameIntent,
+  colliders: readonly Aabb[] = COLLIDERS,
+  scene: SceneDefinition = ACTIVE_SCENE,
+): WorldState {
   const forward = clampAxis(intent.move.forward);
   const strafe = clampAxis(intent.move.strafe);
 
@@ -62,12 +68,14 @@ export function stepOnce(state: WorldState, intent: FrameIntent, colliders: read
     dz = (-nf * cos - ns * sin) * step;
   }
 
-  const position = resolveMove(state.player.position, { x: dx, z: dz }, PLAYER_RADIUS, colliders);
+  const wanted = resolveMove(state.player.position, { x: dx, z: dz }, PLAYER_RADIUS, colliders);
+  // Um degrau alto demais barra o passo em vez de teleportar o corpo para cima.
+  const position = canStepFrom(scene, state.player.position, wanted) ? wanted : state.player.position;
   const travelled = state.presence.travelled + PRESENCE_SPEED * TICK_SECONDS;
 
   return {
     tick: state.tick + 1,
-    player: { ...state.player, position },
+    player: { ...state.player, position, groundY: groundHeightAt(scene, position) },
     presence: { position: pointOnLoop(PRESENCE_PATH, travelled), travelled },
   };
 }
@@ -82,10 +90,11 @@ export function advance(
   intent: FrameIntent,
   ticks: number,
   colliders: readonly Aabb[] = COLLIDERS,
+  scene: SceneDefinition = ACTIVE_SCENE,
 ): WorldState {
   let next = applyLook(state, intent);
   for (let i = 0; i < ticks; i += 1) {
-    next = stepOnce(next, intent, colliders);
+    next = stepOnce(next, intent, colliders, scene);
   }
   return next;
 }

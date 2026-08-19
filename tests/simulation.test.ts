@@ -4,7 +4,7 @@ import { NEUTRAL_INTENT, type FrameIntent } from "../src/core/intent";
 import { createRng } from "../src/core/rng";
 import { advance, createWorldState, COLLIDERS } from "../src/sim/world-sim";
 import { loopLength, pointOnLoop } from "../src/sim/presence";
-import { PRESENCE_PATH, PRESENCE_SPEED } from "../src/content/desert-scene";
+import { PRESENCE_PATH, PRESENCE_SPEED } from "../src/content/active-scene";
 import { blocked } from "../src/world/geometry";
 import { PLAYER_RADIUS, WALK_SPEED } from "../src/sim/state";
 

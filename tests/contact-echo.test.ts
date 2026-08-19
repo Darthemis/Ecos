@@ -11,7 +11,8 @@ import {
   seedFromId,
   type EchoLevel,
 } from "../src/world/contact-echo";
-import { OBSTACLES } from "../src/content/desert-scene";
+import { ACTIVE_SCENE } from "../src/content/active-scene";
+const OBSTACLES = ACTIVE_SCENE.obstacles;
 import type { Obstacle } from "../src/world/geometry";
 
 function obstacle(overrides: Partial<Obstacle> = {}): Obstacle {
@@ -104,8 +105,9 @@ describe("intensidades comparaveis", () => {
     expect(ECHO_LEVELS.intermediario).toBeLessThan(ECHO_LEVELS.legivel);
   });
 
-  it("mantem o intermediario como padrao experimental", () => {
-    expect(DEFAULT_ECHO_LEVEL).toBe("intermediario");
+  it("usa o sutil como padrao jogavel provisorio", () => {
+    expect(DEFAULT_ECHO_LEVEL).toBe("sutil");
+    expect(ECHO_LEVELS[DEFAULT_ECHO_LEVEL]).toBe(0.016);
   });
 
   it("circula pelos tres e volta ao primeiro", () => {

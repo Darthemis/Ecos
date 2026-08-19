@@ -89,6 +89,26 @@ export function contactFootprints(obstacles: readonly Obstacle[]): ContactFootpr
   return grounded;
 }
 
+/**
+ * Os contatos mais proximos de um ponto, ate o limite enviado a renderizacao.
+ * Um lugar inteiro tem mais volumes do que cabem num quadro; os que importam
+ * sao os que o jogador pode ver de perto, porque o alcance do eco e curto.
+ */
+export function nearestContacts(
+  obstacles: readonly Obstacle[],
+  from: Vec2,
+  max = MAX_CONTACTS,
+): ContactFootprint[] {
+  const grounded = obstacles.filter(isGrounded).map(contactFootprint);
+  grounded.sort((a, b) => {
+    const da = (a.center.x - from.x) ** 2 + (a.center.z - from.z) ** 2;
+    const db = (b.center.x - from.x) ** 2 + (b.center.z - from.z) ** 2;
+    // Desempate pela identidade: a selecao nao pode depender da ordem do array.
+    return da === db ? a.id.localeCompare(b.id) : da - db;
+  });
+  return grounded.slice(0, max);
+}
+
 /** Intensidades comparaveis para avaliacao humana. O padrao e experimental. */
 // O termo entra como emissao em espaco linear, num mundo cuja iluminacao
 // ambiente mal chega a 0,05. Valores acima de ~0,06 estouram o topo da rampa de
@@ -101,7 +121,9 @@ export const ECHO_LEVELS = {
 
 export type EchoLevel = keyof typeof ECHO_LEVELS;
 export const ECHO_LEVEL_ORDER: readonly EchoLevel[] = ["sutil", "intermediario", "legivel"];
-export const DEFAULT_ECHO_LEVEL: EchoLevel = "intermediario";
+// Fechamento da Fase 1.1: o sutil e o padrao jogavel provisorio. As outras duas
+// intensidades permanecem apenas como diagnostico, em F8.
+export const DEFAULT_ECHO_LEVEL: EchoLevel = "sutil";
 
 export function nextEchoLevel(current: EchoLevel): EchoLevel {
   const index = ECHO_LEVEL_ORDER.indexOf(current);

@@ -1,30 +1,35 @@
-// Montagem do laco. Une entrada, simulacao, percepcao, renderizacao, audio e
-// diagnostico sem que nenhum deles conheca o outro diretamente.
+// Montagem do laço. Une entrada, simulação, percepção, renderização, áudio e
+// diagnóstico sem que nenhum deles conheça o outro diretamente.
 
 import { NearestFilter, WebGLRenderer, WebGLRenderTarget } from "three";
 import { planSteps, TICK_SECONDS } from "../core/fixed-step";
-import { createInputSource, type LookMode } from "../core/input";
-import { createPresenceAudio } from "../audio/presence-audio";
+import { createInputSource } from "../core/input";
+import { DEFAULT_COMFORT } from "../core/settings";
+import { createAmbience } from "../audio/ambience";
+import { ACTIVE_SCENE } from "../content/active-scene";
 import { createDiagnosticsOverlay, DIAGNOSTICS_ENABLED } from "../diagnostics/overlay";
 import { Metrics } from "../diagnostics/metrics";
+import { createRouteLog } from "../diagnostics/route-log";
+import { createRouteCanvas } from "../diagnostics/route-canvas";
 import { createAsciiPass } from "../render/ascii-pass";
-import { createDesertView } from "../render/desert-view";
+import { createSceneView } from "../render/scene-view";
 import { GLYPH_CELL_HEIGHT, GLYPH_CELL_WIDTH } from "../render/glyph-atlas";
 import { createRadar } from "../render/radar";
 import { advance, createWorldState } from "../sim/world-sim";
 import { PLAYER_EYE_HEIGHT } from "../sim/state";
-import {
-  DEFAULT_VISUAL_RANGE,
-  nextVisualRange,
-  radarContact,
-  type VisualRange,
-} from "../world/perception";
+import { segmentAt } from "../world/scene";
 import {
   DEFAULT_ECHO_LEVEL,
   ECHO_LEVELS,
   nextEchoLevel,
   type EchoLevel,
 } from "../world/contact-echo";
+import {
+  DEFAULT_VISUAL_RANGE,
+  nextVisualRange,
+  radarContact,
+  type VisualRange,
+} from "../world/perception";
 
 export type Game = {
   stop: () => void;
@@ -42,27 +47,29 @@ export function startGame(root: HTMLElement): Game {
   rangeLabel.className = "ecos-range";
   root.appendChild(rangeLabel);
 
+  // Indicação discreta, só antes da interação. Não explica o percurso.
   const hint = document.createElement("div");
   hint.className = "ecos-hint";
-  hint.textContent = "clique para ouvir e olhar · WASD anda · setas olham · 1 2 3 alcance";
+  hint.textContent = "clique para ouvir e olhar · WASD anda · setas olham · − e = sensibilidade";
   root.appendChild(hint);
 
-  // Indicacao discreta de qual caminho de visada esta em uso. O jogador nao
-  // deve precisar adivinhar por que o olhar responde de um jeito ou de outro.
   const lookBadge = document.createElement("div");
   lookBadge.className = "ecos-look-mode";
   root.appendChild(lookBadge);
 
   const renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
-  renderer.setPixelRatio(1);
 
-  const view = createDesertView();
+  const view = createSceneView(ACTIVE_SCENE);
   const ascii = createAsciiPass();
-  const audio = createPresenceAudio();
+  const audio = createAmbience(ACTIVE_SCENE);
   const metrics = new Metrics();
+  const routeLog = createRouteLog(ACTIVE_SCENE);
 
   const diagnostics = DIAGNOSTICS_ENABLED ? createDiagnosticsOverlay() : null;
   if (diagnostics !== null) root.appendChild(diagnostics.element);
+
+  const routeCanvas = DIAGNOSTICS_ENABLED ? createRouteCanvas(ACTIVE_SCENE) : null;
+  if (routeCanvas !== null) root.appendChild(routeCanvas.canvas);
 
   let target = new WebGLRenderTarget(2, 2, { minFilter: NearestFilter, magFilter: NearestFilter });
   let columns = 2;
@@ -73,13 +80,16 @@ export function startGame(root: HTMLElement): Game {
   let worldLights = true;
   let echoOn = true;
   let echoLevel: EchoLevel = DEFAULT_ECHO_LEVEL;
-  let probeSuspended = false;
+  let sectorDebug = false;
+  let flickerReduced = DEFAULT_COMFORT.flickerReduced;
   let state = createWorldState();
   let accumulator = 0;
   let previous = performance.now();
   let elapsed = 0;
   let running = true;
   let labelTimer = 0;
+
+  view.setEchoLevel(echoLevel);
 
   const applyVisualRange = (meters: VisualRange) => {
     visualRange = meters;
@@ -90,10 +100,10 @@ export function startGame(root: HTMLElement): Game {
 
   const resize = () => {
     // A grade precisa cair em pixels inteiros do dispositivo. Quando a largura
-    // nao e multiplo exato da celula, cada celula ocupa uma fracao de pixel e o
+    // não é múltiplo exato da célula, cada célula ocupa uma fração de pixel e o
     // batimento entre as duas grades aparece como faixas verticais fixas na
-    // tela. Por isso o quadro e dimensionado para baixo ate o multiplo exato e
-    // centralizado; a sobra fica preta, que ja e parte do mundo.
+    // tela. Por isso o quadro é reduzido até o múltiplo exato e centralizado; a
+    // sobra fica preta, que já é parte do mundo.
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
     const cellWidth = Math.max(4, Math.round(GLYPH_CELL_WIDTH * dpr));
     const cellHeight = Math.max(6, Math.round(GLYPH_CELL_HEIGHT * dpr));
@@ -107,9 +117,6 @@ export function startGame(root: HTMLElement): Game {
     const bufferWidth = columns * cellWidth;
     const bufferHeight = rows * cellHeight;
 
-    // setPixelRatio(1) com o tamanho ja em pixels do dispositivo: o buffer tem
-    // exatamente o tamanho pedido e o CSS o apresenta um-para-um, sem que o
-    // navegador reescale a imagem.
     renderer.setPixelRatio(1);
     renderer.setSize(bufferWidth, bufferHeight, false);
     canvas.style.width = `${bufferWidth / dpr}px`;
@@ -144,15 +151,14 @@ export function startGame(root: HTMLElement): Game {
       case "cycleRange":
         applyVisualRange(nextVisualRange(visualRange));
         break;
+      case "toggleFlickerReduction":
+        // Conforto: vale no jogo normal, não é diagnóstico.
+        flickerReduced = !flickerReduced;
+        view.setFlickerReduced(flickerReduced);
+        radar.setFlickerReduced(flickerReduced);
+        break;
       case "toggleDiagnostics":
         if (diagnostics !== null) diagnostics.setVisible(diagnostics.element.hidden);
-        break;
-      case "toggleWorldLights":
-        // Diagnostico dos dois estados de iluminacao, na mesma cena e posicao.
-        if (DIAGNOSTICS_ENABLED) {
-          worldLights = !worldLights;
-          view.setWorldLightsEnabled(worldLights);
-        }
         break;
       case "toggleEcho":
         if (DIAGNOSTICS_ENABLED) {
@@ -164,24 +170,31 @@ export function startGame(root: HTMLElement): Game {
         if (DIAGNOSTICS_ENABLED) {
           echoLevel = nextEchoLevel(echoLevel);
           view.setEchoLevel(echoLevel);
-          view.setEchoEnabled(echoOn);
         }
         break;
-      case "toggleProbeSuspension":
+      case "toggleSectorDebug":
         if (DIAGNOSTICS_ENABLED) {
-          probeSuspended = !probeSuspended;
-          view.setProbeSuspended(probeSuspended);
+          sectorDebug = !sectorDebug;
+          view.setSectorDebug(sectorDebug);
+          routeCanvas?.setVisible(sectorDebug);
         }
+        break;
+      case "exportRoute":
+        // Exportação local: nada sai da máquina.
+        if (DIAGNOSTICS_ENABLED) console.info(routeLog.toText());
         break;
       case "toggleUniformProbe":
-        // Entrada perfeitamente uniforme atravessando o passe ASCII. Serve para
-        // isolar vies periodico da grade: colunas iguais devem sair iguais.
         if (DIAGNOSTICS_ENABLED) uniformProbe = !uniformProbe;
         break;
       case "toggleRawScene":
-        // Modo 3D convencional: diagnostico apenas. Ausente da construcao de
-        // producao, portanto nunca alcancavel pelo jogador.
+        // Modo 3D convencional: diagnóstico apenas. Ausente da construção de
+        // produção, portanto nunca alcançável pelo jogador.
         if (DIAGNOSTICS_ENABLED) showRawScene = !showRawScene;
+        break;
+      case "sensitivityDown":
+      case "sensitivityUp":
+        rangeLabel.textContent = `sensibilidade ${input.sensitivity().toFixed(1)}`;
+        labelTimer = 1.6;
         break;
     }
   });
@@ -208,9 +221,17 @@ export function startGame(root: HTMLElement): Game {
     state = advance(state, intent, plan.ticks);
     metrics.recordSim(performance.now() - simStart, plan.ticks, plan.dropped);
 
-    view.update(elapsed);
-    view.camera.position.set(state.player.position.x, PLAYER_EYE_HEIGHT, state.player.position.z);
+    // O registro recebe uma cópia e não devolve nada à simulação.
+    routeLog.sample(elapsed, { x: state.player.position.x, z: state.player.position.z });
+
+    view.camera.position.set(
+      state.player.position.x,
+      state.player.groundY + PLAYER_EYE_HEIGHT,
+      state.player.position.z,
+    );
     view.camera.rotation.set(state.player.pitch, state.player.yaw, 0, "YXZ");
+
+    const sectors = view.update(elapsed, state.player.position);
 
     const renderStart = performance.now();
     if (uniformProbe) {
@@ -232,24 +253,32 @@ export function startGame(root: HTMLElement): Game {
     const contact = radarContact(state);
     radar.draw(state.player.yaw, contact, elapsed);
     audio.update(state.player.position, state.player.yaw, state.presence.position);
-
-    lookBadge.textContent = describeLookMode(input.lookMode(), input.pointerLockAvailable());
+    routeCanvas?.draw(routeLog.samples(), state.player.position);
 
     if (labelTimer > 0) {
       labelTimer -= deltaSeconds;
       rangeLabel.style.opacity = labelTimer > 0 ? String(Math.min(1, labelTimer)) : "0";
     }
 
-    diagnostics?.update(metrics.snapshot(), {
-      grade: `${columns} x ${rows}`,
-      alcance: `${visualRange} m`,
-      tick: String(state.tick),
-      luzes: worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
-      eco: echoOn ? `${echoLevel} (${ECHO_LEVELS[echoLevel]})` : "desligado",
-      prova: probeSuspended ? "pedra SUSPENSA" : "pedra apoiada",
-      modo: uniformProbe ? "ENTRADA UNIFORME (diagnostico)" : showRawScene ? "3D CONVENCIONAL (diagnostico)" : "ascii",
-      audio: audio.isRunning() ? "ativo" : "aguardando gesto",
-    });
+    lookBadge.textContent = describeLookMode(input.lookMode(), input.pointerLockAvailable());
+
+    if (diagnostics !== null) {
+      const summary = routeLog.summary();
+      diagnostics.update(metrics.snapshot(), {
+        cena: `${ACTIVE_SCENE.id} v${ACTIVE_SCENE.version} seed ${ACTIVE_SCENE.seed}`,
+        grade: `${columns} x ${rows}`,
+        alcance: `${visualRange} m`,
+        posicao: `${state.player.position.x.toFixed(1)}, ${state.player.position.z.toFixed(1)} · y ${state.player.groundY.toFixed(2)}`,
+        trecho: segmentAt(ACTIVE_SCENE, state.player.position) ?? "fora",
+        setores: `${sectors.active}/${sectors.total} · objetos ${sectors.objectsActive}/${sectors.objectsTotal}`,
+        percurso: `${summary.distance.toFixed(0)} m · ${summary.seconds.toFixed(0)} s · hesitacoes ${summary.hesitations} · retornos ${summary.returns}`,
+        luzes: worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
+        eco: echoOn ? `${echoLevel} (${ECHO_LEVELS[echoLevel]})` : "desligado",
+        conforto: `sensibilidade ${input.sensitivity().toFixed(1)} · cintilacao ${flickerReduced ? "reduzida" : "normal"}`,
+        modo: uniformProbe ? "ENTRADA UNIFORME" : showRawScene ? "3D CONVENCIONAL" : "ascii",
+        audio: audio.isRunning() ? `ativo · ${audio.emitterCount()} emissores` : "aguardando gesto",
+      });
+    }
 
     requestAnimationFrame(frame);
   };
@@ -271,7 +300,7 @@ export function startGame(root: HTMLElement): Game {
 }
 
 /** Texto curto do indicador de controle. */
-function describeLookMode(mode: LookMode, lockAvailable: boolean): string {
+function describeLookMode(mode: ReturnType<ReturnType<typeof createInputSource>["lookMode"]>, lockAvailable: boolean): string {
   switch (mode) {
     case "pointerLock":
       return "olhar: mouse capturado · esc solta";

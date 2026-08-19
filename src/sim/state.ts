@@ -2,6 +2,8 @@ import type { Vec2 } from "../world/geometry";
 
 export type PlayerState = {
   position: Vec2;
+  /** Altura do terreno sob os pes, em metros. Segue o relevo, nao salta. */
+  groundY: number;
   /** Radianos. 0 olha para -Z; cresce no sentido anti-horario visto de cima. */
   yaw: number;
   /** Radianos, limitado por MAX_PITCH. */

@@ -12,6 +12,8 @@ const CARDINALS = ["N", "L", "S", "O"] as const;
 
 export type Radar = {
   canvas: HTMLCanvasElement;
+  /** Conforto: congela a pulsacao do contato sem escondê-lo. */
+  setFlickerReduced: (reduced: boolean) => void;
   draw: (yaw: number, contact: RadarContact | null, seconds: number) => void;
 };
 
@@ -31,8 +33,13 @@ export function createRadar(diameter = 132): Radar {
   const center = diameter / 2;
   const radius = center - 10;
 
+  let flickerReduced = false;
+
   return {
     canvas,
+    setFlickerReduced(reduced) {
+      flickerReduced = reduced;
+    },
     draw(yaw, contact, seconds) {
       ctx.clearRect(0, 0, diameter, diameter);
 
@@ -81,12 +88,12 @@ export function createRadar(diameter = 132): Radar {
       if (contact === null) return;
 
       // Contato unico e ambiguo: intensidade e tremor, sem icone nem rotulo.
-      const jitter = Math.sin(seconds * 2.7) * 0.05 + Math.sin(seconds * 6.1) * 0.02;
+      const jitter = flickerReduced ? 0 : Math.sin(seconds * 2.7) * 0.05 + Math.sin(seconds * 6.1) * 0.02;
       const angle = contact.bearing;
       const distance = radius * Math.min(1, contact.normalizedDistance + jitter * 0.4);
       const x = center + Math.sin(angle) * distance;
       const y = center - Math.cos(angle) * distance;
-      const pulse = 0.55 + 0.45 * Math.sin(seconds * 3.4);
+      const pulse = flickerReduced ? 0.85 : 0.55 + 0.45 * Math.sin(seconds * 3.4);
       const alpha = Math.max(0.12, contact.strength * pulse);
 
       ctx.globalAlpha = alpha;

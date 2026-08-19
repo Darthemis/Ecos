@@ -8,9 +8,11 @@
 
 ## FASE ATIVA
 
-**Fase 1.1 — Correção perceptiva: concluída, aguardando avaliação humana.**
+**Fase 2 — A Rua Interrompida: implementação técnica concluída. Portões 1 e 2 aguardando teste humano.**
 
-O que existe hoje: caminhar em primeira pessoa por um trecho fixo de deserto, visto em ASCII colorido sobre fundo preto, com alcance visual de 8, 15 ou 25 metros, radar/bússola verde, uma presença sonora móvel em áudio espacial e medição separada de simulação e renderização.
+O que existe hoje: um percurso de cerca de 120 metros por uma rua de ruínas, em primeira pessoa e ASCII colorido sobre fundo preto. Três trechos de ritmo espacial distinto — praça aberta, corredor comprimido com curva e rampa, bacia que se abre —, duas rotas que convergem, dois marcos e um vestígio silencioso de um acontecimento passado. Alcance visual de 8, 15 ou 25 metros, radar/bússola verde, som espacial de vários emissores e medição separada de simulação e renderização.
+
+O teste do Portão 1 foi **adiado deliberadamente**, a pedido do responsável, e será feito junto com o do Portão 2 num único ciclo. Nenhum agente pode declarar qualquer um dos dois aprovado.
 
 **Eco de Contato** (experiência provisória): o que toca o terreno torna minimamente legível o lugar onde o toca — poucos vestígios interrompidos junto da área real de contato, mais fracos que o próprio objeto. Não é luz: é o terreno que se sombreia, então paredes o ocultam pelo simples teste de profundidade.
 
@@ -78,6 +80,8 @@ Requer Node 20 ou superior. Abra o endereço que o `npm run dev` imprimir e cliq
 | setas | girar e inclinar o olhar, sem apontador |
 | `1` `2` `3` | alcance visual de 8, 15 ou 25 metros |
 | `V` | alterna entre os três alcances |
+| `−` `=` | sensibilidade da visada |
+| `F10` | reduz cintilação de luzes e do radar |
 | `Esc` | libera o ponteiro |
 
 Um texto discreto no canto inferior direito diz qual caminho de visada está ativo. As setas **não** caminham: caminhar é sempre WASD.
@@ -94,7 +98,8 @@ Só existe em `npm run dev`. A construção de produção não contém esse cód
 | `F6` | entrada uniforme atravessando o passe ASCII, para medir viés da grade |
 | `F7` | liga e desliga o Eco de Contato |
 | `F8` | alterna as três intensidades do Eco de Contato |
-| `F9` | ergue a pedra de prova, que deixa de tocar o terreno |
+| `F9` | bordas dos setores e planta do percurso registrado |
+| `F11` | exporta o percurso registrado em texto, no console |
 
 ---
 
@@ -107,11 +112,11 @@ docs/            documentos canônicos e registros de design
 src/app/         inicialização e montagem do laço
 src/core/        passo fixo, intenções, entrada e gerador com seed
 src/sim/         estado do mundo e tick determinístico
-src/world/       geometria, colisão e percepção
-src/content/     a cena fixa do deserto, orientada a dados
+src/world/       geometria, colisão, percepção, terreno, setores e rotas
+src/content/     a rua, orientada a dados, e a escolha da cena ativa
 src/render/      cena Three.js, atlas de glifos, passe ASCII e radar
-src/audio/       presença sonora espacial
-src/diagnostics/ métricas e sobreposição (apenas em desenvolvimento)
+src/audio/       som espacial de vários emissores
+src/diagnostics/ métricas, setores, registro de percurso (desenvolvimento)
 tests/           testes determinísticos
 tools/           ferramentas de simulação e diagnóstico
 ```
