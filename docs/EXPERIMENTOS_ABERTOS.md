@@ -34,6 +34,11 @@ Um item desta lista é resolvido por protótipo ou playtest e, ao ser resolvido,
 
 ---
 
+## Perceptivos — abertos pela Fase 1.1
+
+- **Eco de Contato.** Regra provisória, ligada por padrão na intensidade intermediária. Três intensidades comparáveis estão disponíveis para avaliação (`F8`): `sutil` 0,016, `intermediario` 0,030, `legivel` 0,052 — valores de emissão em espaço linear. Parâmetros fixos por enquanto: alcance de 1,15 m a partir da borda da área de contato, queda cúbica, ruído de valor a 1,7 células por metro, limiar entre 0,38 e 0,72 conforme o tamanho da fundação, acumulação por `max` (nunca soma), até 24 contatos por quadro. Migra para decisão fechada só depois da avaliação humana.
+- **Vestígios em criaturas.** A regra aceita qualquer objeto com área de contato conhecida, mas a Fase 1 não tem criaturas: a presença sonora é invisível de propósito. O comportamento junto a pés e patas ainda não foi visto na prática.
+
 ## Técnicos — abertos pela Fase 0
 
 Estes itens foram deliberadamente **não decididos** ao montar a base do projeto. Nenhum deles é uma decisão de design; todos são reversíveis.

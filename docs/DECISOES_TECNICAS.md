@@ -138,3 +138,46 @@ Ambos existem apenas em desenvolvimento e não entram na construção de produç
 | --- | --- |
 | `F5` | liga e desliga as fontes de luz do mundo, para comparar os dois estados na mesma posição |
 | `F6` | injeta uma entrada perfeitamente uniforme no passe ASCII, para medir viés periódico da grade |
+
+---
+
+## Eco de Contato
+
+**Por que não é luz.** Um `PointLight` por objeto multiplicaria o custo de
+iluminação, acenderia paredes e objetos além do terreno, atravessaria obstáculos
+sem cálculo de sombra e daria a cada coisa a aparência de carregar uma lâmpada.
+O efeito é, em vez disso, um termo somado à emissão do **material do terreno**.
+A oclusão passa a ser consequência do teste de profundidade: se um muro está
+entre a câmera e aquele chão, o chão não é desenhado, e nada vaza através dele.
+
+**Forma do contato.** A distância usada é até a **borda do retângulo de contato**,
+não até o centro, então a forma e o tamanho do objeto entram no resultado e
+nenhum objeto recebe um círculo igual. O retângulo vem da mesma caixa alinhada
+aos eixos que a colisão já usa, incluindo o efeito da rotação.
+
+**Irregularidade estável.** Um ruído de valor ancorado nas coordenadas do mundo,
+semeado pela identidade do objeto, é passado por um limiar. O resultado são
+trechos interrompidos, nunca um anel completo. Não há termo de tempo nem
+dependência da tela: ao caminhar ou girar, o vestígio continua pertencendo ao
+mesmo lugar do terreno.
+
+**Fundações grandes.** O limiar sobe com a área de contato, de 0,38 para até
+0,72. Uma estrutura longa recebe poucos vestígios distribuídos ao longo dela, em
+vez da área inteira abaixo acesa.
+
+**Acumulação.** As contribuições combinam por `max`, nunca por soma. Por mais
+objetos que se aproximem, o teto é o de um único contato — o chão não volta a ser
+uma superfície contínua.
+
+**Escala.** O termo entra em espaço linear num mundo cuja iluminação ambiente mal
+chega a 0,05. A primeira tentativa usou 0,72 e produziu exatamente as plataformas
+brilhantes que a regra proíbe, com glifos `@` e `#` nas bases. Os valores úteis
+ficaram vinte vezes menores.
+
+**Estabilidade, e o que a medição não consegue provar aqui.** Com a câmera parada,
+capturas consecutivas diferem em cerca de 0,03% dos pixels. A causa **não** é o
+Eco: a diferença persiste com o Eco desligado, com as fontes do mundo desligadas
+e — decisivamente — com a entrada uniforme, onde não há cena alguma. Duas
+capturas tiradas sem intervalo nenhum sobre esse quadro constante ainda diferem
+em 0,024%. É ruído do caminho de captura em rasterização por software; julgar
+cintilação exige hardware real.

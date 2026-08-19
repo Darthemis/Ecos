@@ -12,6 +12,8 @@
 
 O que existe hoje: caminhar em primeira pessoa por um trecho fixo de deserto, visto em ASCII colorido sobre fundo preto, com alcance visual de 8, 15 ou 25 metros, radar/bússola verde, uma presença sonora móvel em áudio espacial e medição separada de simulação e renderização.
 
+**Eco de Contato** (experiência provisória): o que toca o terreno torna minimamente legível o lugar onde o toca — poucos vestígios interrompidos junto da área real de contato, mais fracos que o próprio objeto. Não é luz: é o terreno que se sombreia, então paredes o ocultam pelo simples teste de profundidade.
+
 **A luz pertence ao mundo, não ao personagem.** Sem uma fonte próxima, o terreno aos pés é quase inteiramente preto e restam poucos glifos esparsos; junto de uma fonte — hoje o calor que escapa da máquina soterrada sob a ruína — a região alcançada revela terreno e objetos.
 
 O que **não** existe: Cartas de Intenção, NPCs, memória causal, IA, inventário, Recomeço e as quatro telas. A Fase 2 não começa antes do marco humano (Plano §14): a legibilidade e a identidade visual são avaliadas jogando, não por relatório.
@@ -90,6 +92,9 @@ Só existe em `npm run dev`. A construção de produção não contém esse cód
 | `F4` | modo 3D convencional, sem ASCII |
 | `F5` | liga e desliga as fontes de luz do mundo |
 | `F6` | entrada uniforme atravessando o passe ASCII, para medir viés da grade |
+| `F7` | liga e desliga o Eco de Contato |
+| `F8` | alterna as três intensidades do Eco de Contato |
+| `F9` | ergue a pedra de prova, que deixa de tocar o terreno |
 
 ---
 

@@ -31,6 +31,16 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-19 — Eco de Contato (experiência provisória)
+
+- **Decisão afetada:** nenhuma. É uma **experiência**, não uma decisão fechada: entra em `EXPERIMENTOS_ABERTOS.md` e só migra para `DECISOES_FECHADAS.md` depois de avaliação humana.
+- **Regra:** «Tudo que toca o mundo torna minimamente legível o lugar onde o toca.» Um objeto apoiado, fixado ou enraizado no terreno torna levemente legível o chão junto da sua área real de contato.
+- **Não é luz.** Nenhum objeto ganha fonte luminosa. O termo é sombreamento do próprio terreno, somado como emissão antes da névoa. Três consequências: a oclusão sai de graça pelo teste de profundidade, sem revelar nada através de paredes; o vestígio existe mesmo quando só a parte elevada do objeto está visível, porque pertence ao terreno; e nada disso alcança simulação, furtividade, percepção de agentes ou detecção.
+- **Justificativa:** medido no recorte sobre a base da pedra de prova — sem eco 0,695% de tinta, com eco 1,940%, ou seja +1,245 pontos percentuais. Com a mesma pedra suspensa, +0,015 pp, resíduo de vizinhos. Terreno vazio permanece em 0,010%.
+- **Aprovação humana:** solicitada pelo responsável em 19/08/2026, como acréscimo à Fase 1.1.
+- **GDD atualizado:** não aplicável — GDD e Plano permanecem intactos.
+- **Impacto no código:** `src/world/contact-echo.ts` (regra pura), `src/render/contact-echo-material.ts` (sombreamento do terreno), `src/content/desert-scene.ts` (pedra de prova), `src/app/game.ts` e `src/core/input.ts` (diagnósticos F7, F8, F9). Radar, áudio, colisões, simulação, núcleo determinístico e os alcances de 8, 15 e 25 metros não foram tocados.
+
 ## 2026-08-19 — A luz pertence ao mundo, nunca ao personagem
 
 - **Decisão afetada:** linguagem visual da tela de Jogo. Nenhuma decisão de `DECISOES_FECHADAS.md` é revogada: o fundo preto, a visão curta, o ASCII colorido e os alcances de 8, 15 e 25 metros continuam valendo.

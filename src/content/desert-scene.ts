@@ -38,6 +38,10 @@ export const OBSTACLES: readonly Obstacle[] = [
   { id: "rock-g", kind: "rock", center: { x: -2.2, z: 14.6 }, size: { x: 2.0, y: 1.4, z: 1.8 }, baseY: -0.3, yaw: 1.0 },
   { id: "rock-h", kind: "rock", center: { x: 7.6, z: 12.2 }, size: { x: 1.5, y: 1.0, z: 1.3 }, baseY: -0.2, yaw: 0.5 },
 
+  // Pedra de prova, pequena e apoiada. Existe para o diagnostico do Eco de
+  // Contato: apoiada produz eco, suspensa nao produz.
+  { id: "probe-stone", kind: "rock", center: { x: 1.6, z: 1.4 }, size: { x: 0.9, y: 0.7, z: 0.8 }, baseY: -0.1, yaw: 0.3 },
+
   // Monolito inclinado: silhueta alta o bastante para ancorar a orientacao.
   { id: "monolith", kind: "monolith", center: { x: -15.5, z: -14.5 }, size: { x: 1.2, y: 6.5, z: 1.2 }, baseY: -0.6, yaw: 0.35 },
 ];

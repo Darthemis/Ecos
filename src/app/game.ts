@@ -19,6 +19,12 @@ import {
   radarContact,
   type VisualRange,
 } from "../world/perception";
+import {
+  DEFAULT_ECHO_LEVEL,
+  ECHO_LEVELS,
+  nextEchoLevel,
+  type EchoLevel,
+} from "../world/contact-echo";
 
 export type Game = {
   stop: () => void;
@@ -65,6 +71,9 @@ export function startGame(root: HTMLElement): Game {
   let showRawScene = false;
   let uniformProbe = false;
   let worldLights = true;
+  let echoOn = true;
+  let echoLevel: EchoLevel = DEFAULT_ECHO_LEVEL;
+  let probeSuspended = false;
   let state = createWorldState();
   let accumulator = 0;
   let previous = performance.now();
@@ -145,6 +154,25 @@ export function startGame(root: HTMLElement): Game {
           view.setWorldLightsEnabled(worldLights);
         }
         break;
+      case "toggleEcho":
+        if (DIAGNOSTICS_ENABLED) {
+          echoOn = !echoOn;
+          view.setEchoEnabled(echoOn);
+        }
+        break;
+      case "cycleEchoLevel":
+        if (DIAGNOSTICS_ENABLED) {
+          echoLevel = nextEchoLevel(echoLevel);
+          view.setEchoLevel(echoLevel);
+          view.setEchoEnabled(echoOn);
+        }
+        break;
+      case "toggleProbeSuspension":
+        if (DIAGNOSTICS_ENABLED) {
+          probeSuspended = !probeSuspended;
+          view.setProbeSuspended(probeSuspended);
+        }
+        break;
       case "toggleUniformProbe":
         // Entrada perfeitamente uniforme atravessando o passe ASCII. Serve para
         // isolar vies periodico da grade: colunas iguais devem sair iguais.
@@ -217,6 +245,8 @@ export function startGame(root: HTMLElement): Game {
       alcance: `${visualRange} m`,
       tick: String(state.tick),
       luzes: worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
+      eco: echoOn ? `${echoLevel} (${ECHO_LEVELS[echoLevel]})` : "desligado",
+      prova: probeSuspended ? "pedra SUSPENSA" : "pedra apoiada",
       modo: uniformProbe ? "ENTRADA UNIFORME (diagnostico)" : showRawScene ? "3D CONVENCIONAL (diagnostico)" : "ascii",
       audio: audio.isRunning() ? "ativo" : "aguardando gesto",
     });

@@ -26,6 +26,18 @@ import {
 } from "../content/desert-scene";
 import type { ObstacleKind } from "../world/geometry";
 import { PLAYER_EYE_HEIGHT } from "../sim/state";
+import {
+  contactFootprints,
+  DEFAULT_ECHO_LEVEL,
+  ECHO_LEVELS,
+  type EchoLevel,
+} from "../world/contact-echo";
+import { attachContactEcho } from "./contact-echo-material";
+
+/** Identidade da pedra usada nos diagnosticos de apoiado x suspenso. */
+const PROBE_STONE_ID = "probe-stone";
+/** Altura a que a pedra de prova e erguida no diagnostico, em metros. */
+const PROBE_SUSPENSION_HEIGHT = 1.5;
 
 const KIND_COLOR: Record<ObstacleKind, number> = {
   rock: 0xa8aeb6,
@@ -112,6 +124,10 @@ export type DesertView = {
   setVisualRange: (meters: number) => void;
   /** Diagnostico: desliga as fontes do mundo para comparar os dois estados. */
   setWorldLightsEnabled: (enabled: boolean) => void;
+  setEchoLevel: (level: EchoLevel) => void;
+  setEchoEnabled: (enabled: boolean) => void;
+  /** Diagnostico: ergue a pedra de prova, que deixa de tocar o terreno. */
+  setProbeSuspended: (suspended: boolean) => void;
   update: (seconds: number) => void;
   dispose: () => void;
 };
@@ -125,13 +141,14 @@ export function createDesertView(): DesertView {
   camera.position.y = PLAYER_EYE_HEIGHT;
 
   const sand = createSandTexture();
-  const ground = new Mesh(
-    new PlaneGeometry(GROUND_HALF_EXTENT * 2, GROUND_HALF_EXTENT * 2),
-    new MeshLambertMaterial({ color: SAND_COLOR, map: sand }),
-  );
+  const groundMaterial = new MeshLambertMaterial({ color: SAND_COLOR, map: sand });
+  const echo = attachContactEcho(groundMaterial);
+
+  const ground = new Mesh(new PlaneGeometry(GROUND_HALF_EXTENT * 2, GROUND_HALF_EXTENT * 2), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
+  const meshesById = new Map<string, Mesh>();
   for (const obstacle of OBSTACLES) {
     const mesh = new Mesh(
       new BoxGeometry(obstacle.size.x, obstacle.size.y, obstacle.size.z),
@@ -140,7 +157,22 @@ export function createDesertView(): DesertView {
     mesh.position.set(obstacle.center.x, obstacle.baseY + obstacle.size.y / 2, obstacle.center.z);
     mesh.rotation.y = obstacle.yaw;
     scene.add(mesh);
+    meshesById.set(obstacle.id, mesh);
   }
+
+  // A pedra de prova pode ser erguida no diagnostico. Enquanto estiver no ar,
+  // deixa de tocar o terreno e o eco dela desaparece com ela.
+  let probeSuspended = false;
+  const refreshContacts = () => {
+    const grounded = OBSTACLES.filter(
+      (obstacle) => !(probeSuspended && obstacle.id === PROBE_STONE_ID),
+    );
+    echo.setFootprints(contactFootprints(grounded));
+  };
+  refreshContacts();
+
+  let echoLevel: EchoLevel = DEFAULT_ECHO_LEVEL;
+  echo.setStrength(ECHO_LEVELS[echoLevel]);
 
   // O personagem nao ilumina o mundo. Nao existe luz presa a camera.
   //
@@ -177,6 +209,23 @@ export function createDesertView(): DesertView {
     },
     setWorldLightsEnabled(enabled) {
       for (const { light } of worldLights) light.visible = enabled;
+    },
+    setEchoLevel(level) {
+      echoLevel = level;
+      echo.setStrength(ECHO_LEVELS[level]);
+    },
+    setEchoEnabled(enabled) {
+      echo.setStrength(enabled ? ECHO_LEVELS[echoLevel] : 0);
+    },
+    setProbeSuspended(suspended) {
+      probeSuspended = suspended;
+      const mesh = meshesById.get(PROBE_STONE_ID);
+      const obstacle = OBSTACLES.find((candidate) => candidate.id === PROBE_STONE_ID);
+      if (mesh !== undefined && obstacle !== undefined) {
+        const resting = obstacle.baseY + obstacle.size.y / 2;
+        mesh.position.y = suspended ? resting + PROBE_SUSPENSION_HEIGHT : resting;
+      }
+      refreshContacts();
     },
     update(seconds) {
       // Oscilacao lenta: a fonte e calor, nao uma lampada.
