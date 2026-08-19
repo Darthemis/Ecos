@@ -384,11 +384,16 @@ o matiz do próprio material. Alcance, orientação, oscilação e brilho perman
 somente a pintura das superfícies pela cor da luz foi retirada. Emissões
 próprias, como o Eco de Contato, continuam coloridas.
 
-Os traços distantes dos marcos eram outra origem independente: volumes básicos
-vermelho/laranja e violeta, sem névoa, desenhados para orientação além do alcance
-visual. Como a avaliação os leu como mais uma faixa de cor determinada pela
-distância, os traços permanecem sem névoa e com a mesma geometria, mas passam a
-ser neutros. A cor só volta a existir no volume real do marco.
+Os traços distantes dos marcos eram outra origem independente. Uma primeira
+correção os neutralizou por inteiro, mas a avaliação mostrou que o lilás do
+mastro era um marcador direcional excelente. Ele foi restaurado; apenas o sinal
+secundário do vestígio permanece neutro.
+
+A mesma avaliação revelou o erro real da tentativa anterior: ao preservar o
+matiz dos materiais provisórios, o render passou a expor em grandes faixas o
+marrom do solo e o creme das ruínas. Como materiais e cor semântica continuam
+fora do escopo da Fase 2.1A, todas as superfícies difusas ficam neutras por
+enquanto. A iluminação conserva brilho, alcance e oscilação, mas não cria matiz.
 
 Aumentar a faixa dinâmica do alvo — meia precisão em vez de 8 bits — resolveria
 a raiz, mas mudaria **toda** a imagem, não só a estrutura. Fica registrado em

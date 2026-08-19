@@ -69,6 +69,8 @@ export type Landmark = {
    * ponto unico sai do enquadramento quando o jogador se aproxima. */
   beaconBase: number;
   beaconHeight: number;
+  /** Cor semantica do sinal distante; nao colore a geometria do mundo. */
+  beaconColor: number;
   /** Meia largura do sinal distante, em metros. */
   beaconHalfWidth: number;
   segment: SegmentId;

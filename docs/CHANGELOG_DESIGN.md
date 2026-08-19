@@ -144,6 +144,11 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
   eram os traços distantes dos marcos, desenhados sem névoa em vermelho/laranja
   e violeta. Eles continuam orientando por forma e posição, mas passam a ser
   neutros; a distância não recebe mais uma cor própria.
+- **Revisão da terceira correção:** o lilás do mastro foi restaurado após ser
+  identificado como um marcador direcional eficaz. O sinal secundário continua
+  neutro. As faixas amarelas e vermelhas vistas depois da mudança vinham dos
+  materiais provisórios; como cor semântica de material segue adiada, as
+  superfícies difusas passam a usar matiz neutro e a luz altera apenas brilho.
 - **GDD atualizado:** não aplicável.
 - **Impacto no código:** `src/render/structural-legibility.ts`,
   `src/render/structure-pass.ts`, `src/render/ascii-pass.ts`,

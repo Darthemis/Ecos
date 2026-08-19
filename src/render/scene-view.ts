@@ -27,22 +27,17 @@ import {
   type Texture,
 } from "three";
 import { createRng } from "../core/rng";
-import type { ObstacleKind, Vec2 } from "../world/geometry";
+import type { Vec2 } from "../world/geometry";
 import type { SceneDefinition } from "../world/scene";
 import { activeSectorIds, sectorIdForPoint } from "../world/sectors";
 import { nearestContacts, type EchoLevel, ECHO_LEVELS } from "../world/contact-echo";
 import { attachContactEcho } from "./contact-echo-material";
 import { stabilizeLambertHue } from "./stable-hue-material";
 
-const KIND_COLOR: Record<ObstacleKind, number> = {
-  rock: 0xa8aeb6,
-  ruin: 0xe2d9bf,
-  monolith: 0x8b9fb2,
-};
-
-const SAND_COLOR = 0x94703f;
+// Cor semantica de materiais continua adiada na Fase 2.1A. Enquanto isso,
+// superficies usam matiz neutro; luz governa apenas brilho e densidade.
+const WORLD_SURFACE_COLOR = 0xffffff;
 const SAND_TILE_METERS = 24;
-const DISTANT_BEACON_COLOR = 0xffffff;
 
 /** Ate onde os sinais distantes dos marcos precisam existir, em metros. */
 const LANDMARK_VIEW_DISTANCE = 220;
@@ -146,7 +141,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   scene.add(camera);
 
   const sand = createSandTexture(definition.seed, definition.groundHalfExtent);
-  const groundMaterial = new MeshLambertMaterial({ color: SAND_COLOR, map: sand });
+  const groundMaterial = new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR, map: sand });
   const echo = attachContactEcho(groundMaterial);
   stabilizeLambertHue(groundMaterial);
 
@@ -164,7 +159,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
     const top = Math.max(patch.height, patch.heightTo ?? patch.height);
     const mesh = new Mesh(
       new BoxGeometry(width, Math.max(0.08, top), depth),
-      stabilizeLambertHue(new MeshLambertMaterial({ color: 0x8d7350 })),
+      stabilizeLambertHue(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR })),
     );
     mesh.position.set(
       (patch.area.minX + patch.area.maxX) / 2,
@@ -180,7 +175,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   for (const obstacle of definition.obstacles) {
     const mesh = new Mesh(
       new BoxGeometry(obstacle.size.x, obstacle.size.y, obstacle.size.z),
-      stabilizeLambertHue(new MeshLambertMaterial({ color: KIND_COLOR[obstacle.kind] })),
+      stabilizeLambertHue(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR })),
     );
     mesh.position.set(obstacle.center.x, obstacle.baseY + obstacle.size.y / 2, obstacle.center.z);
     mesh.rotation.y = obstacle.yaw;
@@ -196,13 +191,13 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   }
 
   // Sinal distante dos marcos: sem nevoa, para existir alem do alcance visual.
-  // Pequeno, alto e neutro de proposito — orienta sem acender nem pintar o
-  // mundo. A cor pertence ao volume real, nao a sua representacao distante.
+  // O mastro conserva o lilas aprovado como direcao principal; o vestigio usa
+  // sinal neutro para nao criar outra faixa cromatica distante.
   const beacons = definition.landmarks.map((landmark) => {
     const altura = Math.max(0.4, landmark.beaconHeight - landmark.beaconBase);
     const mesh = new Mesh(
       new BoxGeometry(landmark.beaconHalfWidth * 2, altura, landmark.beaconHalfWidth * 2),
-      new MeshBasicMaterial({ color: DISTANT_BEACON_COLOR, fog: false }),
+      new MeshBasicMaterial({ color: landmark.beaconColor, fog: false }),
     );
     mesh.position.set(landmark.position.x, landmark.beaconBase + altura / 2, landmark.position.z);
     scene.add(mesh);

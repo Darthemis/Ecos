@@ -186,10 +186,11 @@ describe("marcos e vestigio", () => {
     const alturaDosMuros = Math.max(...scene.obstacles.map((o) => o.baseY + o.size.y));
     const mastro = scene.landmarks.find((l) => l.id === "mastro-inclinado")!;
     expect(mastro.beaconHeight).toBeGreaterThan(alturaDosMuros * 0.7);
+    expect(mastro.beaconColor).toBe(0xc65cff);
     for (const landmark of scene.landmarks) {
       expect(landmark.beaconHalfWidth).toBeLessThan(0.6);
-      expect(landmark).not.toHaveProperty("beaconColor");
     }
+    expect(scene.landmarks.find((l) => l.id === "fundacao-interrompida")!.beaconColor).toBe(0xffffff);
   });
 
   it("o sinal distante e um traco vertical, para nao sair do quadro de perto", () => {
