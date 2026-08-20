@@ -8,6 +8,7 @@ import { DEFAULT_COMFORT } from "../core/settings";
 import { createAmbience } from "../audio/ambience";
 import { ACTIVE_SCENE } from "../content/active-scene";
 import { createDiagnosticsOverlay, DIAGNOSTICS_ENABLED } from "../diagnostics/overlay";
+import { parseCapturePose, type CapturePose } from "../diagnostics/deterministic-capture";
 import {
   applyDiagnosticCommand,
   INITIAL_DIAGNOSTIC_STATE,
@@ -98,6 +99,9 @@ export function startGame(root: HTMLElement): Game {
   let elapsed = 0;
   let running = true;
   let labelTimer = 0;
+  // Pose de captura. Nula no jogo; nao nula so quando uma ferramenta de medicao
+  // a define. Ver src/diagnostics/deterministic-capture.ts.
+  let capture: CapturePose | null = null;
 
   // Aplica o estado inteiro, campo a campo. Nenhum campo pode ficar sem efeito
   // por esquecimento: foi assim que `F5` deixou de funcionar na Fase 2.
@@ -223,14 +227,20 @@ export function startGame(root: HTMLElement): Game {
     // O registro recebe uma cópia e não devolve nada à simulação.
     routeLog.sample(elapsed, { x: state.player.position.x, z: state.player.position.z });
 
-    view.camera.position.set(
-      state.player.position.x,
-      state.player.groundY + PLAYER_EYE_HEIGHT,
-      state.player.position.z,
-    );
-    view.camera.rotation.set(state.player.pitch, state.player.yaw, 0, "YXZ");
+    // Ponto de vista e instante da cena. Com uma pose de captura ativa os dois
+    // ficam fixos, e o quadro deixa de depender do relogio de parede — que e o
+    // que torna duas execucoes comparaveis. A simulacao continua intocada.
+    const olhoX = capture?.x ?? state.player.position.x;
+    const olhoZ = capture?.z ?? state.player.position.z;
+    const olhoY = capture?.eyeY ?? state.player.groundY + PLAYER_EYE_HEIGHT;
+    const olhoYaw = capture?.yaw ?? state.player.yaw;
+    const olhoPitch = capture?.pitch ?? state.player.pitch;
+    const tempo = capture?.seconds ?? elapsed;
 
-    const sectors = view.update(elapsed, state.player.position);
+    view.camera.position.set(olhoX, olhoY, olhoZ);
+    view.camera.rotation.set(olhoPitch, olhoYaw, 0, "YXZ");
+
+    const sectors = view.update(tempo, { x: olhoX, z: olhoZ });
 
     const renderStart = performance.now();
     if (diag.uniformProbe) {
@@ -252,7 +262,7 @@ export function startGame(root: HTMLElement): Game {
     metrics.recordRender(performance.now() - renderStart);
 
     const contact = radarContact(state);
-    radar.draw(state.player.yaw, contact, elapsed);
+    radar.draw(olhoYaw, contact, tempo);
     audio.update(state.player.position, state.player.yaw, state.presence.position);
     routeCanvas?.draw(routeLog.samples(), state.player.position);
 
@@ -288,11 +298,31 @@ export function startGame(root: HTMLElement): Game {
     requestAnimationFrame(frame);
   };
 
+  // Superficie de medicao, so em desenvolvimento. A construcao de producao nao
+  // contem este bloco, entao o jogador nunca a alcanca — a mesma regra dos
+  // outros diagnosticos.
+  if (DIAGNOSTICS_ENABLED) {
+    (window as unknown as Record<string, unknown>).__ecosCapture = (pose: unknown) => {
+      if (pose === null) {
+        capture = null;
+        return true;
+      }
+      const analisada = parseCapturePose(pose);
+      if (analisada === null) return false;
+      capture = analisada;
+      return true;
+    };
+  }
+
   requestAnimationFrame(frame);
 
   return {
     stop() {
       running = false;
+      capture = null;
+      if (DIAGNOSTICS_ENABLED) {
+        delete (window as unknown as Record<string, unknown>).__ecosCapture;
+      }
       window.removeEventListener("resize", resize);
       input.dispose();
       audio.dispose();
