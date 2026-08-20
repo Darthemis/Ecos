@@ -1,7 +1,7 @@
 // Converte a cena renderizada em baixa resolucao para glifos coloridos sobre
 // preto. Um quad de tela inteira e um shader; um texel da cena e uma celula.
 //
-// Desde a Fase 2.1A o passe le tambem o mapa estrutural — silhueta, degrau,
+// Desde a Fase 1.1 o passe le tambem o mapa estrutural — silhueta, degrau,
 // encontro de planos e canto —, calculado a parte na resolucao da grade. Ele
 // apenas aumenta a densidade do glifo. A cor continua sendo a do objeto: o
 // reforco nao acende nada, nao inventa matiz e nao existe fora do alcance

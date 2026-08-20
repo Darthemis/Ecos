@@ -60,7 +60,9 @@ Estes itens foram deliberadamente **não decididos** ao montar a base do projeto
 - **Consulta de tempo de GPU.** As métricas medem CPU. Se a renderização virar gargalo, medir GPU exige extensões de temporização do WebGL.
 - **Escopo real do comando `simulate`.** Hoje é um stub. Vira ferramenta de simulação acelerada quando existir relógio determinístico (Plano §5.2, `tools/`).
 
-## Abertos pela Fase 2.1A
+## Abertos pela Fase 1.1 — legibilidade estrutural
+
+*(Registrados como Fase 2.1A até a renumeração de 20/08/2026.)*
 
 - **Faixa dinâmica do alvo de renderização.** O alvo tem 8 bits e guarda luz
   linear; tudo abaixo de 1/255 vira zero exato, e é nessa faixa que este mundo
@@ -84,9 +86,38 @@ Estes itens foram deliberadamente **não decididos** ao montar a base do projeto
   perfeitamente reta, porque a geometria é reta. Está dentro do que a tarefa
   pede, mas é o candidato mais provável a incomodar na avaliação humana.
 
-### Adiado da Fase 2.1, preservado em `archive/fase-2.1-monolitica`
+### Adiado da tentativa monolítica, preservado em `archive/fase-2.1-monolitica`
 
-Famílias de material e cor semântica; variação tonal entre instâncias; campo
-luminoso com núcleo e cauda; propagação ampliada das fontes; continuidade das
-superfícies horizontais; escalonamento do Eco de Contato pelo perímetro; as duas
-geometrias complexas. Cada um volta como experiência própria, quando autorizado.
+Cor semântica de materiais; variação tonal entre instâncias; campo luminoso com
+núcleo e cauda; propagação ampliada das fontes; continuidade das superfícies
+horizontais; as duas geometrias complexas. Cada um volta como experiência
+própria, quando autorizado.
+
+Já voltaram e foram aprovados: **famílias de material** (por padrão e densidade
+de glifos, sem cor) e o **escalonamento do Eco de Contato** (por eixo, condicionado
+à base de cada objeto).
+
+## Abertos pela Fase 1.1 — matéria, topos, rampas e Eco
+
+- **O instrumento de captura não é determinista.** A caminhada depende do tempo
+  de quadro, e o mesmo build indo ao mesmo ponto difere de 11% a 28% dos pixels
+  entre execuções. Enquanto isso durar, nenhuma comparação de pixels deste
+  projeto vale como prova e a avaliação visual é humana. É a dívida de
+  ferramentas mais urgente: sem ela, não há como medir nada perceptivo.
+- **Grão do Eco contra interior uniforme.** As duas coisas excluem-se. O grão de
+  0,45 m foi aprovado em 20/08/2026 por se aproximar da referência visual, mas
+  desfez o interior uniforme aprovado em 19/08. Se o playtest mostrar que o miolo
+  precisa voltar a ser sólido, `ECHO_GRAIN` é o único botão — e a decisão volta a
+  ser de design, não de calibração.
+- **Tabelas de glifos por família.** As três atuais (` .,:;ox%8@`, ` .:!/*[#%@`,
+  ` ..--==+#@`) foram escolhidas por inspeção, não por playtest. O conjunto
+  definitivo continua aberto, como já estava o da rampa base.
+- **Famílias para chão, rampas e patamares.** Continuam na tabela global por não
+  terem material declarado. Cada tipo de chão terá o seu padrão — cavernas com
+  linhas e camadas, por exemplo. Fica para uma experiência própria.
+- **O alfa do alvo da cena é agora um canal ocupado.** Carrega a família do
+  material. Qualquer material transparente futuro corrompe o identificador; se
+  isso for preciso, o transporte tem de mudar antes.
+- **Ordem do alfa na cadeia completa de materiais.** O teste que prova a escrita
+  depois de `<opaque_fragment>` exercita `attachSurfacePattern` isolado, não a
+  cadeia real com `attachTopSurface` e `stabilizeLambertHue`.

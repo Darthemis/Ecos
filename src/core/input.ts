@@ -78,7 +78,7 @@ export const COMMAND_KEYS: Record<string, InputCommand> = {
   F11: "exportRoute",
   Minus: "sensitivityDown",
   Equal: "sensitivityUp",
-  // Fase 2.1A. Longe de WASD de proposito: sao diagnosticos, nao movimento.
+  // Fase 1.1. Longe de WASD de proposito: sao diagnosticos, nao movimento.
   KeyB: "toggleStructure",
   KeyN: "toggleStructureMask",
   KeyM: "cycleStructureSource",

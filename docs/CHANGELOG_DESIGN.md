@@ -31,6 +31,74 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-20 — A fase atual é renumerada de 2.1 para 1.1
+
+- **Decisão afetada:** nenhuma decisão fechada. Correção de **numeração**, para o
+  repositório voltar a concordar com o Plano §7.
+- **Antes:** a etapa em curso chamava-se Fase 2.1 (e a sua decomposição, 2.1A).
+- **Depois:** chama-se **Fase 1.1**, continuando a sub-fase perceptiva já aberta
+  com esse nome em 19/08/2026.
+- **Justificativa:** a Fase 2 do Plano §7 é *Pulso e consequência* — Cartas de
+  Intenção sobre película semitransparente, resolução pela simulação, evento
+  causal registrado, estado persistido. **Nada disso existe.** Tudo o que foi
+  construído até aqui é percepção: ASCII, alcance visual, radar, som espacial,
+  legibilidade estrutural, Eco de Contato, matéria por padrão. Isso é Fase 1. O
+  número anterior fazia o repositório afirmar um progresso que não houve, e o
+  aceite da Fase 0 exige que um agente novo consiga identificar a fase atual
+  lendo só o repositório.
+- **Aprovação humana:** solicitada pelo responsável em 20/08/2026.
+- **GDD atualizado:** não aplicável — GDD, Plano e `AGENT_RULES.md` permanecem
+  intactos, conferidos por hash.
+- **Impacto no código:** apenas comentários que nomeavam a fase. Nenhum
+  comportamento muda.
+- **O que deliberadamente não foi renomeado:** as entradas anteriores deste
+  changelog, que são registro datado do que aconteceu e não podem ser reescritas
+  sem apagar o rastro que este arquivo existe para guardar; e a branch
+  `archive/fase-2.1-monolitica`, que é referência de Git já publicada.
+- **Divergência que fica registrada, não resolvida:** a etapa da rua ("A Rua
+  Interrompida", 19/08/2026) também foi rotulada Fase 2 e sofre do mesmo
+  desalinhamento — é trabalho perceptivo, não Pulso. Não foi renumerada porque
+  a instrução humana tratava da fase **atual**. Fica como decisão pendente do
+  responsável.
+
+## 2026-08-20 — Fase 1.1: matéria por padrão, topos, rampas e a forma do Eco
+
+- **Decisão afetada:** um item de `EXPERIMENTOS_ABERTOS.md` — o escalonamento do
+  Eco de Contato, adiado da tentativa monolítica — é resolvido. As famílias de
+  material voltam como experiência própria e continuam **abertas**: distinguem
+  matéria por padrão e densidade de glifos, nunca por cor.
+- **O que passa a valer:**
+  - superfícies quase horizontais de volumes têm piso emissivo de 0,006 sobre a
+    matiz normalizada, e existem mesmo sem fonte próxima — isso é legibilidade
+    estrutural, e a névoa continua limitando a distância;
+  - rampas são desenhadas como rampas, seguindo a mesma função de altura que a
+    simulação usa; começam ao nível do chão em vez de blocos já altos;
+  - material e tipo de objeto deixam de ser a mesma decisão;
+  - o Eco de Contato é cinzento neutro, tem tamanho condicionado à base de cada
+    objeto **por eixo**, e forma de caixa arredondada dissolvida em grão.
+- **A troca que foi feita de olhos abertos:** o interior uniforme do Eco,
+  aprovado em 19/08 (`a4c82d2`), deixou de existir na zona de queda. Grão e
+  interior uniforme excluem-se; não há versão que tenha os dois. A troca foi
+  declarada antes de ser feita e aprovada depois de vista no navegador.
+- **Justificativa:** cada uma das cinco experiências foi avaliada isoladamente
+  pelo responsável, no navegador, antes de a seguinte começar — o método que a
+  tentativa monolítica não teve. O formato do Eco seguiu uma referência visual
+  fornecida pelo responsável em 20/08/2026.
+- **Aprovação humana:** responsável, 20/08/2026, uma autorização por experiência.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+- **Impacto no código:** `src/world/surface-material.ts` (novo),
+  `src/render/surface-pattern-material.ts` (novo),
+  `src/render/height-patch-geometry.ts` (novo), `src/render/top-surface-material.ts`,
+  `src/render/contact-echo-material.ts`, `src/world/contact-echo.ts`,
+  `src/render/glyph-atlas.ts`, `src/render/ascii-pass.ts`, `src/render/scene-view.ts`,
+  `src/world/geometry.ts` e os diagnósticos. Testes em
+  `tests/materiais-de-superficie.test.ts` (novo), `tests/rampa-visivel.test.ts`
+  (novo), `tests/contact-echo.test.ts` e `tests/legibilidade-estrutural.test.ts`.
+- **Limitação que acompanha esta entrada:** o instrumento de captura do projeto
+  não é determinista, e uma medição que eu havia dado como verificada foi
+  retirada por estar abaixo do ruído. Ver `EXPERIMENTOS_ABERTOS.md` e
+  `DECISOES_TECNICAS.md`. Todas as aprovações desta fase são humanas e visuais.
+
 ## 2026-08-19 — Fase 2: A Rua Interrompida
 
 - **Decisão afetada:** nenhuma decisão fechada é revogada. Primeira aplicação das regras perceptivas a um lugar, em vez de a um laboratório.

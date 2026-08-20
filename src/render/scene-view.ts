@@ -38,7 +38,7 @@ import { attachSurfacePattern, type PatternHandle } from "./surface-pattern-mate
 import { materialForObstacle } from "../world/surface-material";
 import { isRamp, rampGeometry } from "./height-patch-geometry";
 
-// Cor semantica de materiais continua adiada na Fase 2.1A. Enquanto isso,
+// Cor semantica de materiais continua adiada na Fase 1.1. Enquanto isso,
 // superficies usam matiz neutro; luz governa apenas brilho e densidade.
 const WORLD_SURFACE_COLOR = 0xffffff;
 const SAND_TILE_METERS = 24;

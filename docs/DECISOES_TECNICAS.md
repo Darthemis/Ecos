@@ -241,9 +241,11 @@ verificado por teste que compara o estado com e sem registro.
 | `F11` | exporta o percurso em texto no console |
 | `−` `=` | sensibilidade da visada (conforto, vale no jogo normal) |
 
-## Fase 2.1A — Legibilidade estrutural de volumes
+## Fase 1.1 — Legibilidade estrutural de volumes
 
-A Fase 2.1 monolítica (`c602cc2`, preservada em `archive/fase-2.1-monolitica`)
+*(Registrada como Fase 2.1A até a renumeração de 20/08/2026.)*
+
+A tentativa monolítica (`c602cc2`, preservada em `archive/fase-2.1-monolitica`)
 alterou materiais, iluminação, continuidade horizontal, Eco, geometria e
 distribuição visual ao mesmo tempo. A implementação técnica passou; a leitura
 visual não foi aprovada, e a simultaneidade tornou impossível atribuir as
@@ -383,13 +385,13 @@ secundário do vestígio permanece neutro.
 A mesma avaliação revelou o erro real da tentativa anterior: ao preservar o
 matiz dos materiais provisórios, o render passou a expor em grandes faixas o
 marrom do solo e o creme das ruínas. Como materiais e cor semântica continuam
-fora do escopo da Fase 2.1A, todas as superfícies difusas ficam neutras por
+fora do escopo desta etapa, todas as superfícies difusas ficam neutras por
 enquanto. A iluminação conserva brilho, alcance e oscilação, mas não cria matiz.
 
 Aumentar a faixa dinâmica do alvo — meia precisão em vez de 8 bits — resolveria
 a raiz, mas mudaria **toda** a imagem, não só a estrutura. Fica registrado em
 `EXPERIMENTOS_ABERTOS.md` como experiência isolada própria, exatamente para não
-repetir o erro da Fase 2.1 monolítica.
+repetir o erro da tentativa monolítica.
 
 ### Onde a conta é feita, e por quê
 
@@ -414,9 +416,142 @@ por 0,19% a 2,13% dos pixels.
 
 | Tecla | Diagnóstico |
 | --- | --- |
-| `B` | liga e desliga o reforço estrutural — desligado é a saída visual da Fase 2 |
+| `B` | liga e desliga o reforço estrutural — desligado é a saída visual anterior |
 | `N` | só a máscara estrutural, sem a cena por baixo |
 | `M` | isola a parte do sinal: tudo → silhueta e degrau → vinco e canto |
 
 `F4` (cena 3D convencional) e `F6` (entrada uniforme) continuam servindo de
 contraprova, e `F5` voltou a funcionar.
+
+## Fase 1.1 — Matéria, topos, rampas e forma do Eco
+
+Cinco experiências isoladas, cada uma com avaliação humana própria antes da
+seguinte. A ordem importa: cada uma só começou depois de a anterior ser aprovada
+no navegador, e não por relatório.
+
+### Topos das superfícies horizontais
+
+Superfícies quase horizontais que não fossem o chão desapareciam no preto. O
+piso é um termo emissivo de 0,006 aplicado à **matiz normalizada**, restrito a
+`smoothstep( 0.80, 0.95, normal.y )` — só volumes, nunca o terreno. Aplicá-lo à
+cor difusa multiplicada não funcionaria: 0,25 × 0,006 em luz linear é invisível
+num alvo de 8 bits.
+
+Por instrução humana, o topo existe mesmo sem fonte próxima: isso é legibilidade
+estrutural, e a névoa continua limitando a distância.
+
+### Rampas desenhadas como rampas
+
+Toda região de altura era desenhada como uma caixa na altura máxima. Para um
+patamar isso está certo; para uma rampa, não: a simulação interpolava a
+inclinação e a imagem mostrava um bloco de topo plano já na altura final. O
+corpo subia a rampa que o terreno tem, encostado a uma parede que a cena
+desenhava. Não era regressão desta fase — ficou visível quando os topos ganharam
+piso emissivo.
+
+O topo do sólido passou a seguir `patchHeightAt`, **a mesma função que a
+simulação usa**: não há uma segunda definição de inclinação no render que possa
+divergir da primeira. A base desce 6 cm abaixo do terreno para dar espessura ao
+início de uma rampa que começa ao nível do chão, em vez de um sólido degenerado
+cujos triângulos sem área dariam normais inválidas. A geometria é não-indexada,
+para as normais saírem planas por face — o que importa porque a visibilidade dos
+topos lê a normal do mundo.
+
+### Material separado do tipo de objeto
+
+O padrão era indexado direto por `ObstacleKind`: material e tipo eram a mesma
+decisão, uma família nova exigia um tipo novo, e dois tipos nunca podiam
+partilhar a mesma pedra. O registro puro em `world/surface-material.ts` passou a
+ser a única fonte das famílias; cada uma declara o seu padrão (escala e
+contraste) e a sua tabela de glifos. `Obstacle` ganhou um material opcional que,
+ausente, cai no material de fábrica do tipo.
+
+**Sem cor.** O fator do padrão é escalar e igual nos três canais, então
+sobrevive ao `stabilizeLambertHue` sem alterar matiz: o escalar cancela na
+normalização e reaparece só na luminância. Pelo mesmo motivo o piso de topo, que
+usa a matiz normalizada, não é modulado pelo padrão.
+
+#### Como a família chega ao passe ASCII
+
+O atlas passou a ter uma linha por família; a coordenada `( familia + 1 - y ) /
+linhas` reduz-se exatamente a `1 - y` quando há uma linha só, então a família
+base lê a mesma rampa global de sempre.
+
+A família viaja no **canal alfa do alvo da cena**, que nada mais usava: nenhum
+material é transparente, e o Eco vive dentro do material do chão, não numa malha
+à parte. Por instrução humana a base vale alfa 1 — o valor que o limpo e todo
+material que não escreve alfa já produzem —, e os obstáculos escrevem
+`1 − id/255`. Consequência desejada: terreno, rampas, patamares e marcadores
+caem na tabela global **sem nenhum código**.
+
+A escrita tem de vir depois de `<opaque_fragment>`. Como o material é opaco, o
+Three define `OPAQUE` e aquele trecho faz `diffuseColor.a = 1.0`: um alfa
+escrito junto com a cor seria descartado em silêncio. Isto foi descoberto lendo
+o código do Three, não pelo resultado na tela, e está fixado por um teste que
+monta o shader Lambert real da versão instalada, resolve os `#include` e prova a
+ordem.
+
+**Dívida registrada:** o alfa passou a ser um canal ocupado. Qualquer material
+transparente futuro corrompe o identificador.
+
+### Eco de Contato: cor, tamanho e forma
+
+Três correções, na ordem em que foram pedidas e aprovadas.
+
+**Cor.** `ECHO_COLOR` era `(0.62, 0.66, 0.78)` e é o único termo cromático que o
+eco soma; o azul aparecia como linhas próprias junto aos objetos. Passou a
+cinzento com exatamente a mesma luminância pelos pesos Rec. 709 (0,660160). Como
+o eco entra somando luz **linear** e a luminância é um funcional linear,
+preservar a luminância do vetor preserva a de cada pixel: muda a matiz, não a
+quantidade de luz. O cinzento que igualaria a medida depois da curva de gama
+seria 0,659621 — 0,14 de um nível de 255, abaixo da quantização do alvo, de modo
+que as duas definições concordam e não há escolha a fazer.
+
+O azul que resta na cena **não é do eco**: vem das cores das luzes, que não foram
+tocadas.
+
+**Tamanho.** O miolo já acompanhava a base real; o que não acompanhava era o
+alcance, uma constante única — a mesma para uma pedra de 0,9 m e um muro de 9 m.
+`contactReach` passou a condicioná-lo ao contato, **por eixo e não por um raio
+médio**, para um muro longo e fino continuar a ler-se como muro em vez de ganhar
+um halo tão largo quanto é comprido. Os fatores estão calibrados no objeto
+mediano da cena, que assim conserva os valores anteriores.
+
+**Forma.** A cápsula somava o alcance só no eixo comprido e fechava as pontas com
+um arco da largura inteira: forma esticada para um lado, curvatura exata que a
+vista reconhece de imediato. Passou a caixa arredondada, com raio de canto
+limitado a 45% da meia-base — o eco tem a forma do objeto, não uma forma própria.
+
+A ondulação de borda de 0,12 m atuava numa faixa de 0,035 m, estreita demais para
+disfarçar a curva por baixo. Deu lugar a 0,45 m de grão em duas oitavas, com a
+amplitude subindo de **zero dentro da base** até ao máximo na borda: o núcleo
+junto ao objeto continua sólido e o que se dissolve é o fim. Continua a deslocar
+a distância, nunca a intensidade.
+
+**O que isto custou:** o interior uniforme aprovado em `a4c82d2` deixou de
+existir na zona de queda. Grão e interior uniforme excluem-se; a troca foi
+declarada antes de ser feita e aprovada depois de vista. `ECHO_GRAIN` é o único
+botão — zero devolve a caixa arredondada de contorno limpo.
+
+### Diagnóstico acrescentado
+
+| Tecla | Diagnóstico |
+| --- | --- |
+| `P` | liga e desliga o padrão de superfície por família de material |
+
+### O instrumento de medição falhou, e isso está registrado
+
+Durante esta fase afirmei, como resultado verificado, que 29% das células tinham
+trocado de glifo — apoiado num controle de determinismo que dera idêntico. Esse
+controle **não se reproduz**. O ruído de repetição do mesmo build, indo ao mesmo
+ponto em malha fechada, é de 11% a 28% dos pixels; um diagnóstico deliberadamente
+grosseiro (tabela da rocha toda `@`) produziu 19%, abaixo do ruído.
+
+A conclusão foi retirada. O que continua de pé é a prova estática sobre o shader
+real. Enquanto a captura não for determinista, **nenhuma comparação de pixels
+deste projeto vale como prova**, e a avaliação visual é humana.
+
+Duas lacunas conhecidas e não fechadas: a caminhada depende do tempo de quadro, o
+que torna a captura irreprodutível; e o teste de ordenação do alfa exercita
+`attachSurfacePattern` isolado, não a cadeia real
+`stabilizeLambertHue( attachTopSurface( attachSurfacePattern( … ) ) )`.

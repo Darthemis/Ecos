@@ -32,7 +32,7 @@ export type DiagnosticState = {
   rawScene: boolean;
   /** Entrada uniforme pelo passe ASCII, para conferir as faixas verticais. */
   uniformProbe: boolean;
-  /** Reforço estrutural da Fase 2.1A. Desligado = saída visual da Fase 2. */
+  /** Reforço estrutural da Fase 1.1. Desligado = saída visual anterior. */
   structure: boolean;
   /** Só a máscara estrutural, sem a cena por baixo. */
   structureMask: boolean;

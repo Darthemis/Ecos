@@ -1,5 +1,5 @@
 // A fiação dos diagnósticos. Existe por causa da regressão de `F5`: a tecla
-// ficou mapeada e sem tratamento entre a Fase 2 e a Fase 2.1, e nenhum teste
+// ficou mapeada e sem tratamento entre a rua e a legibilidade estrutural, e nenhum teste
 // percebeu porque a decisão morava num `switch` dentro do laço de renderização.
 
 import { describe, expect, it } from "vitest";

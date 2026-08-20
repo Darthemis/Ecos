@@ -10,7 +10,7 @@
 // propriedade que a rasterização usa para interpolar — então um plano, por mais
 // de raspão que esteja, dá resposta zero, e só a quebra dá resposta. A
 // justificativa completa, com a comparação recusada, está em
-// `docs/DECISOES_TECNICAS.md`, seção da Fase 2.1A.
+// `docs/DECISOES_TECNICAS.md`, seção da Fase 1.1.
 //
 // Este arquivo é a fonte única dos números. O shader do passe ASCII é montado a
 // partir daqui, de modo que teste e imagem não podem divergir.
