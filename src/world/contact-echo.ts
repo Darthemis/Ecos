@@ -89,6 +89,52 @@ export function nearestContacts(
   return grounded.slice(0, max);
 }
 
+/**
+ * Alcance do eco para alem da base que o origina, em metros.
+ *
+ * O miolo da capsula ja acompanhava a base real do objeto; o que nao acompanhava
+ * era este alcance, que era uma constante unica — a mesma para uma pedra de 0,9 m
+ * e para um muro de 9 m. Dai um eco cujo tamanho nao tinha relacao com a coisa
+ * que o produz.
+ *
+ * A lei e por eixo, e nao por um raio medio: um muro longo e fino tem de
+ * continuar a ler-se como muro, em vez de ganhar um halo lateral tao largo
+ * quanto e comprido. O alongamento do eco passa a vir da forma do objeto.
+ *
+ * Os fatores estao calibrados no objeto mediano da cena (meia-base 1,41 x 0,45),
+ * que assim conserva os valores anteriores — 1,80 e 0,70 —, para que o eco ja
+ * aprovado nao mude onde ja estava certo. Os limites existem porque a cena tem
+ * bases numa razao de 5,5x entre a menor e a maior.
+ */
+export const ECHO_REACH = {
+  fatorComprimento: 1.3,
+  minimoComprimento: 0.6,
+  maximoComprimento: 3.2,
+  fatorLargura: 1.55,
+  minimoLargura: 0.35,
+  maximoLargura: 1.6,
+} as const;
+
+export type ContactReach = {
+  /** Alcance no eixo mais longo da base. */
+  length: number;
+  /** Alcance no eixo mais curto da base. */
+  width: number;
+};
+
+/** Alcance do eco de um contato, condicionado ao tamanho daquele contato. */
+export function contactReach(footprint: ContactFootprint): ContactReach {
+  const R = ECHO_REACH;
+  return {
+    length: clamp(R.fatorComprimento * footprint.halfLength, R.minimoComprimento, R.maximoComprimento),
+    width: clamp(R.fatorLargura * footprint.halfWidth, R.minimoLargura, R.maximoLargura),
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 /** Intensidades comparaveis para avaliacao humana. O padrao e experimental. */
 // O termo entra como emissao em espaco linear, num mundo cuja iluminacao
 // ambiente mal chega a 0,05. Valores acima de ~0,06 estouram o topo da rampa de

@@ -1,4 +1,4 @@
-// Legibilidade estrutural: o que a Fase 2.1A promete, provado fora do navegador.
+// Legibilidade estrutural: o que a Fase 1.1 promete, provado fora do navegador.
 //
 // A grandeza é a segunda diferença normalizada do inverso da profundidade. Os
 // testes abaixo constroem profundidades brutas a partir de distâncias em metros
@@ -304,20 +304,31 @@ describe("aplicação do reforço", () => {
 
     material.onBeforeCompile(shader, {} as WebGLRenderer);
     expect(shader.fragmentShader).toContain("uEchoAxes");
-    expect(shader.fragmentShader).toContain("float capsule");
-    expect(shader.fragmentShader).toContain("smoothstep( -uEchoFade, uEchoFade, capsule )");
+    expect(shader.fragmentShader).toContain("float dist");
+    expect(shader.fragmentShader).toContain("smoothstep( -uEchoFade, uEchoFade, dist )");
 
-    // Ruido e permitido apenas no contorno (autorizacao humana de 19/08/2026):
-    // qualquer ondulacao precisa passar pelo peso `borda`, que vale 1 sobre a
-    // borda e zera nas duas direcoes ao longo da faixa de transicao. O miolo do
-    // eco continua uniforme — la o deslocamento e zero, nao apenas pequeno.
+    // Caixa arredondada, nao capsula: a distancia tem de vir da forma canonica
+    // da caixa arredondada, cujo raio e limitado pela propria meia-base.
     expect(shader.fragmentShader).toContain(
-      "float borda = smoothstep( 0.015, 0.05, fall ) * ( 1.0 - smoothstep( 0.05, 0.18, fall ) );",
+      "float dist = length( max( q, vec2( 0.0 ) ) ) + min( max( q.x, q.y ), 0.0 ) - raio;",
     );
-    expect(shader.fragmentShader).toMatch(/capsule \+= uEchoEdgeNoise \* borda \* \( ecoNoise\(/);
-    // E o ruido nao pode reaparecer em nenhum outro lugar do termo.
+    expect(shader.fragmentShader).toContain("vec2 q = abs( local ) - meia + raio;");
+    expect(shader.fragmentShader).toContain(
+      "float raio = min( min( meia.x, meia.y ) * 0.45, uEchoCornerMax );",
+    );
+    // A capsula nao pode voltar por descuido.
+    expect(shader.fragmentShader).not.toContain("float capsule");
+
+    // O grao desloca a distancia, nunca a intensidade, e a sua amplitude sobe de
+    // zero dentro da base ate ao maximo na borda: o nucleo junto ao objeto
+    // continua solido. `fora` e o unico peso, e nada multiplica `fall`.
+    expect(shader.fragmentShader).toContain(
+      "float fora = smoothstep( -uEchoFade * 2.0, uEchoFade, dist );",
+    );
+    expect(shader.fragmentShader).toContain("dist += uEchoGrain * fora * ( grao - 0.5 );");
+    // Duas oitavas, e o ruido nao pode reaparecer em mais nenhum lugar do termo.
     const ocorrencias = shader.fragmentShader.match(/ecoNoise\(/g) ?? [];
-    expect(ocorrencias).toHaveLength(2); // a definicao e o unico uso
+    expect(ocorrencias).toHaveLength(3); // a definicao e as duas oitavas
   });
 
   it("uma célula clara quase não muda — nada de halo", () => {
