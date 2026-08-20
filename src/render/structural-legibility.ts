@@ -59,8 +59,8 @@ export const STRUCTURE = {
   // canto sobe a aresta um degrau.
   pesoSilhueta: 0.58,
   pesoDescontinuidade: 0.38,
-  pesoVinco: 0.27,
-  pesoCanto: 0.12,
+  pesoVinco: 0.29,
+  pesoCanto: 0.15,
 
   /** Teto do reforço somado. O preto continua sendo a maior parte da tela. */
   teto: 0.62,
