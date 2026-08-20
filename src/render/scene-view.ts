@@ -33,6 +33,7 @@ import { activeSectorIds, sectorIdForPoint } from "../world/sectors";
 import { nearestContacts, type EchoLevel, ECHO_LEVELS } from "../world/contact-echo";
 import { attachContactEcho } from "./contact-echo-material";
 import { stabilizeLambertHue } from "./stable-hue-material";
+import { attachTopSurface } from "./top-surface-material";
 
 // Cor semantica de materiais continua adiada na Fase 2.1A. Enquanto isso,
 // superficies usam matiz neutro; luz governa apenas brilho e densidade.
@@ -159,7 +160,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
     const top = Math.max(patch.height, patch.heightTo ?? patch.height);
     const mesh = new Mesh(
       new BoxGeometry(width, Math.max(0.08, top), depth),
-      stabilizeLambertHue(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR })),
+      stabilizeLambertHue(attachTopSurface(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR }))),
     );
     mesh.position.set(
       (patch.area.minX + patch.area.maxX) / 2,
@@ -175,7 +176,7 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   for (const obstacle of definition.obstacles) {
     const mesh = new Mesh(
       new BoxGeometry(obstacle.size.x, obstacle.size.y, obstacle.size.z),
-      stabilizeLambertHue(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR })),
+      stabilizeLambertHue(attachTopSurface(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR }))),
     );
     mesh.position.set(obstacle.center.x, obstacle.baseY + obstacle.size.y / 2, obstacle.center.z);
     mesh.rotation.y = obstacle.yaw;
