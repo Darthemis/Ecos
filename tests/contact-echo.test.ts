@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   contactFootprint,
@@ -103,5 +104,48 @@ describe("intensidades comparaveis", () => {
       vistos.push(level);
     }
     expect(vistos).toEqual(["sutil", "intermediario", "legivel", "sutil"]);
+  });
+});
+
+describe("ondulacao da borda", () => {
+  const fonte = readFileSync("src/render/contact-echo-material.ts", "utf8");
+
+  it("o ruido e ancorado no mundo e nao depende do tempo nem da tela", () => {
+    expect(fonte).toContain("ecoNoise( vEchoWorld.xz * uEchoNoiseScale )");
+    // Nenhum termo temporal ou de tela pode entrar no eco.
+    expect(fonte).not.toMatch(/uTime|elapsed|gl_FragCoord|frame/i);
+  });
+
+  it("nao usa smoothstep com bordas invertidas, que e indefinido em GLSL", () => {
+    const invertidas = /smoothstep\(\s*([\d.]+),\s*([\d.]+),/g;
+    for (const m of fonte.matchAll(invertidas)) {
+      expect(Number(m[1]), `smoothstep( ${m[1]}, ${m[2]}, ... )`).toBeLessThan(Number(m[2]));
+    }
+  });
+
+  it("o peso da ondulacao zera no corpo do eco e no vazio", () => {
+    // Espelha o peso do shader: bump sobre a faixa em que o eco ja se apaga.
+    const suave = (a: number, b: number, v: number) => {
+      const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+      return t * t * (3 - 2 * t);
+    };
+    const peso = (fall: number) => suave(0.015, 0.05, fall) * (1 - suave(0.05, 0.18, fall));
+    expect(peso(1)).toBe(0);      // nucleo saturado
+    expect(peso(0.8)).toBe(0);    // corpo do eco
+    expect(peso(0.3)).toBe(0);    // ainda corpo
+    expect(peso(0.18)).toBe(0);   // limite do corpo
+    expect(peso(0.1)).toBeLessThan(peso(0.05)); // decai depois do pico
+    expect(peso(0)).toBe(0);      // vazio
+    expect(peso(0.05)).toBeCloseTo(1, 6); // o pico da franja externa
+  });
+
+  it("a ondulacao e discreta perto da faixa de transicao", () => {
+    const amplitude = /const ECHO_EDGE_NOISE = ([\d.]+);/.exec(fonte)?.[1];
+    const faixa = /const ECHO_FADE = ([\d.]+);/.exec(fonte)?.[1];
+    expect(amplitude).toBeDefined();
+    expect(Number(amplitude)).toBeCloseTo(0.12, 6);
+    // O deslocamento maximo e metade da amplitude, bem abaixo da faixa: a borda
+    // ondula sem nunca se desprender do contorno.
+    expect(Number(amplitude) / 2).toBeLessThan(Number(faixa) / 2);
   });
 });

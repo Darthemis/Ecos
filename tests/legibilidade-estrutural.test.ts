@@ -306,7 +306,18 @@ describe("aplicação do reforço", () => {
     expect(shader.fragmentShader).toContain("uEchoAxes");
     expect(shader.fragmentShader).toContain("float capsule");
     expect(shader.fragmentShader).toContain("smoothstep( -uEchoFade, uEchoFade, capsule )");
-    expect(shader.fragmentShader).not.toContain("ecoNoise");
+
+    // Ruido e permitido apenas no contorno (autorizacao humana de 19/08/2026):
+    // qualquer ondulacao precisa passar pelo peso `borda`, que vale 1 sobre a
+    // borda e zera nas duas direcoes ao longo da faixa de transicao. O miolo do
+    // eco continua uniforme — la o deslocamento e zero, nao apenas pequeno.
+    expect(shader.fragmentShader).toContain(
+      "float borda = smoothstep( 0.015, 0.05, fall ) * ( 1.0 - smoothstep( 0.05, 0.18, fall ) );",
+    );
+    expect(shader.fragmentShader).toMatch(/capsule \+= uEchoEdgeNoise \* borda \* \( ecoNoise\(/);
+    // E o ruido nao pode reaparecer em nenhum outro lugar do termo.
+    const ocorrencias = shader.fragmentShader.match(/ecoNoise\(/g) ?? [];
+    expect(ocorrencias).toHaveLength(2); // a definicao e o unico uso
   });
 
   it("uma célula clara quase não muda — nada de halo", () => {

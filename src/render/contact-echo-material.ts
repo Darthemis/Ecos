@@ -15,6 +15,15 @@ const ECHO_LENGTH_REACH = 1.8;
 const ECHO_SIDE_REACH = 0.7;
 const ECHO_FADE = 0.65;
 
+/**
+ * Ondulacao do contorno, em metros. Desloca a distancia, nunca a intensidade, e
+ * so dentro da faixa de transicao: o miolo do eco continua uniforme.
+ */
+const ECHO_EDGE_NOISE = 0.12;
+
+/** Celulas de ruido por metro. Define o tamanho das ondulacoes da borda. */
+const ECHO_NOISE_SCALE = 1.2;
+
 const ECHO_COLOR = new Vector3(0.62, 0.66, 0.78);
 
 export type ContactEchoUniforms = {
@@ -29,6 +38,27 @@ vEchoWorld = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
 `;
 
 const FRAGMENT_HOOK = "#include <emissivemap_fragment>";
+
+// Declaradas fora de main: o ponto de injecao do termo fica dentro dela.
+const FRAGMENT_HELPERS = /* glsl */ `
+// Ruido de valor ancorado no espaco do mundo. Sem termo de tempo e sem
+// dependencia da tela: ao caminhar ou girar, a ondulacao continua pertencendo
+// ao mesmo lugar do terreno.
+float ecoHash( vec2 cell ) {
+  return fract( sin( dot( cell, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
+}
+
+float ecoNoise( vec2 p ) {
+  vec2 cell = floor( p );
+  vec2 f = fract( p );
+  f = f * f * ( 3.0 - 2.0 * f );
+  float a = ecoHash( cell );
+  float b = ecoHash( cell + vec2( 1.0, 0.0 ) );
+  float c = ecoHash( cell + vec2( 0.0, 1.0 ) );
+  float d = ecoHash( cell + vec2( 1.0, 1.0 ) );
+  return mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y );
+}
+`;
 
 const FRAGMENT_INJECTION = /* glsl */ `
 #include <emissivemap_fragment>
@@ -48,7 +78,21 @@ for ( int i = 0; i < ECHO_MAX_CONTACTS; i ++ ) {
   // extensao deliberadamente maior no comprimento do contato.
   float along = max( abs( local.x ) - ( area.z + uEchoLengthReach ), 0.0 );
   float capsule = length( vec2( along, local.y ) ) - ( area.w + uEchoSideReach );
+
   float fall = 1.0 - smoothstep( -uEchoFade, uEchoFade, capsule );
+
+  // Ondulacao do contorno. O peso e definido pelo proprio eco, nao pela
+  // distancia: e zero enquanto o eco tem corpo e zero de novo depois que ele
+  // acabou, subindo so na faixa em que ja esta se apagando. Pesar por
+  // abs( capsule ) nao serve: aquilo e zero apenas no nucleo saturado, e a
+  // rampa de transicao, que a vista le como interior, ficava cheia de furos.
+  // Desloca a distancia, nunca a intensidade: a forma ondula, a lei de queda
+  // continua a mesma.
+  // smoothstep com edge0 > edge1 e indefinido em GLSL: a queda vai por
+  // 1.0 - smoothstep, que e bem definido em qualquer implementacao.
+  float borda = smoothstep( 0.015, 0.05, fall ) * ( 1.0 - smoothstep( 0.05, 0.18, fall ) );
+  capsule += uEchoEdgeNoise * borda * ( ecoNoise( vEchoWorld.xz * uEchoNoiseScale ) - 0.5 );
+  fall = 1.0 - smoothstep( -uEchoFade, uEchoFade, capsule );
 
   // max, nunca soma: contatos sobrepostos nao aumentam a intensidade.
   eco = max( eco, fall );
@@ -74,6 +118,8 @@ export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUni
     uEchoLengthReach: { value: ECHO_LENGTH_REACH },
     uEchoSideReach: { value: ECHO_SIDE_REACH },
     uEchoFade: { value: ECHO_FADE },
+    uEchoEdgeNoise: { value: ECHO_EDGE_NOISE },
+    uEchoNoiseScale: { value: ECHO_NOISE_SCALE },
     uEchoColor: { value: ECHO_COLOR },
   };
 
@@ -95,7 +141,10 @@ export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUni
       "uniform float uEchoLengthReach;",
       "uniform float uEchoSideReach;",
       "uniform float uEchoFade;",
+      "uniform float uEchoEdgeNoise;",
+      "uniform float uEchoNoiseScale;",
       "uniform vec3 uEchoColor;",
+      FRAGMENT_HELPERS,
       shader.fragmentShader,
     ]
       .join("\n")
