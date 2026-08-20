@@ -110,6 +110,7 @@ export function startGame(root: HTMLElement): Game {
     ascii.setStructureEnabled(diag.structure);
     ascii.setStructureMask(diag.structureMask);
     ascii.setStructureSource(diag.structureSource);
+    view.setPatternEnabled(diag.surfacePattern);
   };
   syncDiagnostics();
 
@@ -277,6 +278,7 @@ export function startGame(root: HTMLElement): Game {
         estrutura: diag.structure
           ? `ligada · ${diag.structureSource}${diag.structureMask ? " · MASCARA" : ""}`
           : "desligada (base Fase 2)",
+        superficie: diag.surfacePattern ? "padrao por tipo ligado" : "padrao desligado",
         conforto: `sensibilidade ${input.sensitivity().toFixed(1)} · cintilacao ${flickerReduced ? "reduzida" : "normal"}`,
         modo: diag.uniformProbe ? "ENTRADA UNIFORME" : diag.rawScene ? "3D CONVENCIONAL" : "ascii",
         audio: audio.isRunning() ? `ativo · ${audio.emitterCount()} emissores` : "aguardando gesto",

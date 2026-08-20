@@ -1,5 +1,7 @@
 // Espaco e colisao. Matematica pura: nao conhece Three.js nem DOM.
 
+import type { SurfaceMaterialId } from "./surface-material";
+
 export type Vec2 = { x: number; z: number };
 
 export type Aabb = {
@@ -14,6 +16,12 @@ export type ObstacleKind = "rock" | "ruin" | "monolith";
 export type Obstacle = {
   id: string;
   kind: ObstacleKind;
+  /**
+   * Material da superficie. Ausente significa o material de fabrica do tipo
+   * (`MATERIAL_BY_KIND`): o tipo diz o que a coisa e, o material diz do que ela
+   * e feita, e os dois deixaram de ser a mesma decisao.
+   */
+  material?: SurfaceMaterialId;
   center: Vec2;
   /** Extensao total em cada eixo, em metros. */
   size: { x: number; y: number; z: number };

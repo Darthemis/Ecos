@@ -34,6 +34,9 @@ import { nearestContacts, type EchoLevel, ECHO_LEVELS } from "../world/contact-e
 import { attachContactEcho } from "./contact-echo-material";
 import { stabilizeLambertHue } from "./stable-hue-material";
 import { attachTopSurface } from "./top-surface-material";
+import { attachSurfacePattern, type PatternHandle } from "./surface-pattern-material";
+import { materialForObstacle } from "../world/surface-material";
+import { isRamp, rampGeometry } from "./height-patch-geometry";
 
 // Cor semantica de materiais continua adiada na Fase 2.1A. Enquanto isso,
 // superficies usam matiz neutro; luz governa apenas brilho e densidade.
@@ -121,6 +124,8 @@ export type SceneView = {
   /** Planos de camera e nevoa em vigor. O passe ASCII precisa dos quatro. */
   planes: () => { near: number; far: number; fogNear: number; fogFar: number };
   setWorldLightsEnabled: (enabled: boolean) => void;
+  /** Diagnostico: liga e desliga o padrao de superficie dos volumes. */
+  setPatternEnabled: (enabled: boolean) => void;
   setEchoLevel: (level: EchoLevel) => void;
   setEchoEnabled: (enabled: boolean) => void;
   /** Diagnostico: desenha as bordas dos setores. */
@@ -154,14 +159,24 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   scene.add(ground);
 
   // Patamares e rampas: o relevo que a simulacao ja conhece, agora visivel.
+  // O patamar continua sendo uma caixa; a rampa recebe o solido inclinado, com o
+  // topo na altura que `patchHeightAt` da em cada ponto — uma rampa comeca no
+  // nivel do chao e sobe, em vez de ser um bloco que ja nasce alto.
   for (const patch of definition.heightPatches) {
+    const material = stabilizeLambertHue(
+      attachTopSurface(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR })),
+    );
+
+    if (isRamp(patch)) {
+      // A geometria ja vem em coordenadas do mundo: a malha fica na origem.
+      scene.add(new Mesh(rampGeometry(patch), material));
+      continue;
+    }
+
     const width = patch.area.maxX - patch.area.minX;
     const depth = patch.area.maxZ - patch.area.minZ;
     const top = Math.max(patch.height, patch.heightTo ?? patch.height);
-    const mesh = new Mesh(
-      new BoxGeometry(width, Math.max(0.08, top), depth),
-      stabilizeLambertHue(attachTopSurface(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR }))),
-    );
+    const mesh = new Mesh(new BoxGeometry(width, Math.max(0.08, top), depth), material);
     mesh.position.set(
       (patch.area.minX + patch.area.maxX) / 2,
       Math.max(0.08, top) / 2 - 0.02,
@@ -173,10 +188,13 @@ export function createSceneView(definition: SceneDefinition): SceneView {
   // Volumes, agrupados por setor para que so o relevante alimente a cena.
   const bySector = new Map<string, Mesh[]>();
   const unsectored: Mesh[] = [];
+  const patterns: PatternHandle[] = [];
   for (const obstacle of definition.obstacles) {
+    const material = new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR });
+    patterns.push(attachSurfacePattern(material, materialForObstacle(obstacle)));
     const mesh = new Mesh(
       new BoxGeometry(obstacle.size.x, obstacle.size.y, obstacle.size.z),
-      stabilizeLambertHue(attachTopSurface(new MeshLambertMaterial({ color: WORLD_SURFACE_COLOR }))),
+      stabilizeLambertHue(attachTopSurface(material)),
     );
     mesh.position.set(obstacle.center.x, obstacle.baseY + obstacle.size.y / 2, obstacle.center.z);
     mesh.rotation.y = obstacle.yaw;
@@ -268,6 +286,10 @@ export function createSceneView(definition: SceneDefinition): SceneView {
     planes() {
       const fog = scene.fog as Fog;
       return { near: camera.near, far: camera.far, fogNear: fog.near, fogFar: fog.far };
+    },
+
+    setPatternEnabled(enabled) {
+      for (const pattern of patterns) pattern.setEnabled(enabled);
     },
 
     setWorldLightsEnabled(enabled) {

@@ -38,6 +38,8 @@ export type DiagnosticState = {
   structureMask: boolean;
   /** Qual parte do sinal está isolada. */
   structureSource: StructureSource;
+  /** Padrão de superfície dos volumes, por tipo. */
+  surfacePattern: boolean;
 };
 
 export const INITIAL_DIAGNOSTIC_STATE: DiagnosticState = {
@@ -50,6 +52,7 @@ export const INITIAL_DIAGNOSTIC_STATE: DiagnosticState = {
   structure: true,
   structureMask: false,
   structureSource: "todas",
+  surfacePattern: true,
 };
 
 /**
@@ -83,6 +86,8 @@ export function applyDiagnosticCommand(
       return { ...state, structureMask: !state.structureMask };
     case "cycleStructureSource":
       return { ...state, structureSource: nextStructureSource(state.structureSource) };
+    case "toggleSurfacePattern":
+      return { ...state, surfacePattern: !state.surfacePattern };
     default:
       return state;
   }

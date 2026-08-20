@@ -37,6 +37,7 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform sampler2D uGlyphs;
   uniform vec2 uGrid;
   uniform float uGlyphCount;
+  uniform float uGlyphRows;
   uniform float uStructure;
   uniform float uMaskOnly;
   uniform float uSource;
@@ -53,8 +54,15 @@ ${structureDefines()}
     // O alvo de renderizacao guarda luz linear. A densidade do glifo precisa
     // seguir o brilho percebido, entao a amostra e convertida para sRGB antes
     // de virar luminancia.
-    vec3 linear = max(texture2D(uScene, sceneUv).rgb, 0.0);
+    vec4 cena = texture2D(uScene, sceneUv);
+    vec3 linear = max(cena.rgb, 0.0);
     vec3 src = pow(linear, vec3(1.0 / 2.2));
+
+    // Familia de material da celula. Viaja no alfa do alvo da cena, que ate
+    // aqui era constante: nenhum material e transparente. A base vale alfa 1,
+    // que e o que o limpo e todo material que nao escreve alfa ja produzem —
+    // terreno, rampas e patamares caem na tabela global sem nenhum codigo.
+    float familia = clamp(floor((1.0 - cena.a) * 255.0 + 0.5), 0.0, uGlyphRows - 1.0);
     float lum = dot(src, vec3(0.2126, 0.7152, 0.0722));
 
     // Espalha a faixa baixa: o mundo e escuro e a leitura acontece ali.
@@ -72,7 +80,12 @@ ${structureDefines()}
     shaped = min(1.0, shaped + estrutura * (1.0 - shaped));
 
     float index = floor(min(shaped * uGlyphCount, uGlyphCount - 1.0));
-    vec2 glyphUv = vec2((index + inCell.x) / uGlyphCount, 1.0 - inCell.y);
+    // Uma linha do atlas por familia. Com uma linha so, isto e exatamente
+    // 1.0 - inCell.y: a familia base le a mesma rampa de sempre.
+    vec2 glyphUv = vec2(
+      (index + inCell.x) / uGlyphCount,
+      (familia + 1.0 - inCell.y) / uGlyphRows
+    );
     float mask = texture2D(uGlyphs, glyphUv).a;
 
     // A densidade do glifo ja carrega a luminancia. A cor mantem o matiz
@@ -85,7 +98,7 @@ ${structureDefines()}
     if (uMaskOnly > 0.5) {
       // Diagnostico: so o sinal detectado, sem a cena por baixo.
       float ind = floor(min(escolhido / EST_TETO * uGlyphCount, uGlyphCount - 1.0));
-      vec2 uvm = vec2((ind + inCell.x) / uGlyphCount, 1.0 - inCell.y);
+      vec2 uvm = vec2((ind + inCell.x) / uGlyphCount, (1.0 - inCell.y) / uGlyphRows);
       float m = texture2D(uGlyphs, uvm).a;
       gl_FragColor = vec4(vec3(0.55, 0.78, 1.0) * m, 1.0);
       return;
@@ -119,6 +132,7 @@ export function createAsciiPass(): AsciiPass {
       uGlyphs: { value: atlas.texture },
       uGrid: { value: new Vector2(1, 1) },
       uGlyphCount: { value: atlas.glyphCount },
+      uGlyphRows: { value: atlas.rowCount },
       uStructure: { value: 1 },
       uMaskOnly: { value: 0 },
       uSource: { value: 0 },
@@ -152,6 +166,7 @@ export function createAsciiPass(): AsciiPass {
       atlas = createGlyphAtlas(cellWidth, cellHeight);
       material.uniforms.uGlyphs!.value = atlas.texture;
       material.uniforms.uGlyphCount!.value = atlas.glyphCount;
+      material.uniforms.uGlyphRows!.value = atlas.rowCount;
     },
     setStructureEnabled(enabled) {
       material.uniforms.uStructure!.value = enabled ? 1 : 0;

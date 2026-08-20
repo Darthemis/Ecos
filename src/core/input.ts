@@ -41,7 +41,8 @@ export type InputCommand =
   | "sensitivityUp"
   | "toggleStructure"
   | "toggleStructureMask"
-  | "cycleStructureSource";
+  | "cycleStructureSource"
+  | "toggleSurfacePattern";
 
 /** Como o jogador olhou por ultimo. Serve a indicacao na tela. */
 export type LookMode = "pointerLock" | "drag" | "keys" | "idle";
@@ -81,6 +82,7 @@ export const COMMAND_KEYS: Record<string, InputCommand> = {
   KeyB: "toggleStructure",
   KeyN: "toggleStructureMask",
   KeyM: "cycleStructureSource",
+  KeyP: "toggleSurfacePattern",
 };
 
 const TURN_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
