@@ -24,7 +24,21 @@ const ECHO_EDGE_NOISE = 0.12;
 /** Celulas de ruido por metro. Define o tamanho das ondulacoes da borda. */
 const ECHO_NOISE_SCALE = 1.2;
 
-const ECHO_COLOR = new Vector3(0.62, 0.66, 0.78);
+/**
+ * Cor do eco. Era (0.62, 0.66, 0.78) — azulada, e o azul aparecia como linhas
+ * proprias junto aos objetos, uma faixa cromatica que o eco nao deveria criar.
+ *
+ * O cinza abaixo tem exatamente a luminancia daquela cor, pelos pesos Rec. 709
+ * que o passe ASCII ja usa. Como o eco entra somando luz linear, preservar a
+ * luminancia do vetor preserva a luminancia de cada pixel: muda o matiz, nao a
+ * quantidade de luz. Intensidade, formato, alcance e ondulacao ficam intactos.
+ *
+ * (O cinza que igualaria a luminancia medida depois da curva de gama seria
+ * 0.659621 — 0.14 de um nivel de 255 de diferenca, abaixo da quantizacao do
+ * alvo. As duas definicoes concordam, entao nao ha escolha a fazer aqui.)
+ */
+const ECHO_LUMINANCE = 0.2126 * 0.62 + 0.7152 * 0.66 + 0.0722 * 0.78;
+const ECHO_COLOR = new Vector3(ECHO_LUMINANCE, ECHO_LUMINANCE, ECHO_LUMINANCE);
 
 export type ContactEchoUniforms = {
   setFootprints: (footprints: readonly ContactFootprint[]) => void;

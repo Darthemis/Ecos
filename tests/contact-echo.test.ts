@@ -149,3 +149,27 @@ describe("ondulacao da borda", () => {
     expect(Number(amplitude) / 2).toBeLessThan(Number(faixa) / 2);
   });
 });
+
+describe("cor do Eco", () => {
+  const FONTE = readFileSync("src/render/contact-echo-material.ts", "utf8");
+
+  it("e neutra: o eco nao cria faixa cromatica propria", () => {
+    expect(FONTE).toContain(
+      "const ECHO_COLOR = new Vector3(ECHO_LUMINANCE, ECHO_LUMINANCE, ECHO_LUMINANCE);",
+    );
+  });
+
+  it("conserva exatamente a luminancia da cor azulada anterior", () => {
+    const anterior = 0.2126 * 0.62 + 0.7152 * 0.66 + 0.0722 * 0.78;
+    const declarada = /const ECHO_LUMINANCE = ([^;]+);/.exec(FONTE)?.[1];
+    expect(declarada).toBeDefined();
+    // eslint-disable-next-line no-new-func
+    expect(Function(`return ${declarada}`)()).toBe(anterior);
+  });
+
+  it("intensidade, alcance e ondulacao nao foram tocados", () => {
+    expect(FONTE).toContain("const ECHO_EDGE_NOISE = 0.12;");
+    expect(FONTE).toContain("const ECHO_NOISE_SCALE = 1.2;");
+    expect(FONTE).toContain("totalEmissiveRadiance += uEchoColor * eco * uEchoStrength;");
+  });
+});
