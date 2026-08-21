@@ -29,6 +29,14 @@ rampas desenhadas como rampas, famílias de material por padrão e densidade de
 glifos, e o Eco de Contato — cor neutra, tamanho condicionado ao objeto e
 formato de caixa arredondada dissolvida em grão.
 
+**Densidade da grade.** A célula de glifo deixou de ser uma constante única.
+São três aparências, escolhidas com `G`: **equilibrada** (6 × 10, o padrão — não
+perde nenhum glifo e quase dobra o número de células), **nítida** (8 × 14, o
+comportamento histórico) e **textura** (4 × 7, onde os caracteres deixam de se
+distinguir e a imagem passa a valer como superfície — escolhida de propósito,
+não tolerada). O número de células acompanha os pixels da janela, então um ecrã
+maior recebe mais mundo com a mesma fidelidade.
+
 **Fase 1.2 — faixa dinâmica e cor.** O alvo da cena passou de 8 bits para meia
 precisão: os 8 bits impunham um degrau em 0,078 de luminância percebida,
 exatamente na faixa onde este mundo vive, e ninguém o tinha escolhido. Cada
@@ -123,6 +131,7 @@ Requer Node 20 ou superior. Abra o endereço que o `npm run dev` imprimir e cliq
 | `V` | alterna entre os três alcances |
 | `−` `=` | sensibilidade da visada |
 | `F10` | reduz cintilação de luzes e do radar |
+| `G` | densidade da grade: **equilibrada** (padrão), nítida ou textura |
 | `Esc` | libera o ponteiro |
 
 Um texto discreto no canto inferior direito diz qual caminho de visada está ativo. As setas **não** caminham: caminhar é sempre WASD.

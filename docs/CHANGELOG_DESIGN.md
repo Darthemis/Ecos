@@ -31,6 +31,49 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-20 — A densidade da grade passa a ser escolha do jogador, e o padrão muda
+
+- **Decisão afetada:** o tamanho da célula de glifo, que era uma constante única
+  (8 × 14) desde a Fase 1, passa a ter três valores e a ser escolhido por quem
+  joga. Resolve parcialmente o item de `EXPERIMENTOS_ABERTOS.md` sobre calibração
+  perceptiva.
+- **Antes:** 8 × 14 pixels de CSS por célula, sem alternativa.
+- **Depois:** três aparências, com **6 × 10 como padrão**:
+
+  | rótulo | célula | num ecrã de 1366 × 768 | px por glifo |
+  | --- | --- | --- | --- |
+  | nítida | 8 × 14 | 170 × 54 | 112 |
+  | **equilibrada** *(padrão)* | 6 × 10 | 227 × 76 | 60 |
+  | textura | 4 × 7 | 341 × 109 | 28 |
+
+- **Justificativa:** avaliação visual do responsável em 20/08/2026, num ecrã de
+  1366 × 768 com escala 100%, com os cinco degraus percorríveis em execução. A
+  **equilibrada** não perde nenhum glifo e dá quase o dobro das células — é onde
+  o padrão dos materiais deixa de se ler como ruído por célula e passa a ler-se
+  como textura. A **textura** perde a distinção entre caracteres e foi escolhida
+  **deliberadamente**: é uma leitura diferente do mesmo mundo, não uma versão
+  degradada. A **nítida** permanece porque continua a funcionar e alguns olhos e
+  ecrãs vão preferi-la.
+- **A densidade é conforto, não diagnóstico.** Fica na mesma categoria da redução
+  de cintilação e da sensibilidade da visada, que o projeto já trata como coisas
+  que valem no jogo normal. Se fosse diagnóstico, não existiria na construção de
+  produção — que é exatamente onde a avaliação humana acontece.
+- **Dois degraus intermédios (7 × 12 e 5 × 8) existiram e saíram.** Serviram para
+  achar o limiar; achado o limiar, sairiam a mais: isto é uma escolha entre três
+  aparências, não um cursor contínuo.
+- **Aprovação humana:** responsável, 20/08/2026.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos. O
+  GDD §12 não fixa o tamanho da célula.
+- **Impacto no código:** `src/render/glyph-density.ts` (novo),
+  `src/render/glyph-atlas.ts`, `src/render/grid.ts`, `src/app/game.ts`,
+  `src/core/input.ts`, e testes em `tests/densidade-da-grade.test.ts` (novo) e
+  `tests/diagnosticos.test.ts`.
+- **Dívida que esta decisão cria, e que fica em aberto:** os limiares do reforço
+  estrutural foram calibrados a 8 × 14. Eles medem a segunda diferença do inverso
+  da profundidade **entre células vizinhas**, e uma célula menor é uma diferença
+  menor — o reforço enfraquece no padrão novo e enfraquece mais na aparência de
+  textura. **A recalibração não foi feita.** É a próxima tarefa.
+
 ## 2026-08-20 — Fase 1.2: faixa dinâmica, cor por família e o Eco sem cor própria
 
 - **Decisão afetada:** resolve dois itens de `EXPERIMENTOS_ABERTOS.md` — a faixa

@@ -42,7 +42,8 @@ export type InputCommand =
   | "toggleStructure"
   | "toggleStructureMask"
   | "cycleStructureSource"
-  | "toggleSurfacePattern";
+  | "toggleSurfacePattern"
+  | "cycleGlyphDensity";
 
 /** Como o jogador olhou por ultimo. Serve a indicacao na tela. */
 export type LookMode = "pointerLock" | "drag" | "keys" | "idle";
@@ -83,6 +84,8 @@ export const COMMAND_KEYS: Record<string, InputCommand> = {
   KeyN: "toggleStructureMask",
   KeyM: "cycleStructureSource",
   KeyP: "toggleSurfacePattern",
+  // Fase 1.2: escada de densidade da grade, para escolher a olho e no lugar.
+  KeyG: "cycleGlyphDensity",
 };
 
 const TURN_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);

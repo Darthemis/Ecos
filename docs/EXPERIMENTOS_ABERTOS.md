@@ -203,3 +203,21 @@ no mínimo. O único trabalho em resolução cheia é estampar os glifos, uma co
 de textura por pixel. É por isso que o preenchimento nunca apareceu nas medições:
 o estrangulamento medido foi a textura de profundidade sob rasterização por
 software, nunca o número de pixels.
+
+## Aberto pela densidade da grade (20/08/2026)
+
+- **Recalibrar o reforço estrutural para a nova densidade.** Os limiares de
+  silhueta, degrau, vinco e canto foram afinados com células de 8 × 14. Eles
+  medem a segunda diferença do inverso da profundidade entre células vizinhas, e
+  uma célula menor é uma diferença menor: o reforço enfraquece na aparência
+  padrão e enfraquece mais na de textura. Não foi feito, e é a dívida mais direta
+  desta decisão.
+- **As tabelas de glifos na aparência de textura.** Com 28 pixels por caractere
+  os glifos deixam de se distinguir — o que ali é o efeito desejado. Mas as
+  tabelas por família foram escolhidas para se distinguirem; falta saber se
+  alguma escolha diferente serve melhor uma imagem que vale como superfície.
+- **A densidade em ecrãs muito maiores.** O número de células acompanha os pixels
+  da janela, então um monitor grande já recebe muito mais células com a mesma
+  fidelidade. Falta decidir se existe um teto — a partir de certo ponto a célula
+  fica pequena demais no campo visual, e o problema deixa de ser o glifo e passa
+  a ser o ângulo que ele ocupa no olho.

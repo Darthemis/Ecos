@@ -44,6 +44,7 @@ describe("fiação dos diagnósticos", () => {
       "toggleDiagnostics", // liga a sobreposição, que não é estado de cena
       "exportRoute",
       "toggleFlickerReduction", // conforto: vale também no jogo normal
+      "cycleGlyphDensity", // conforto: troca detalhe por legibilidade do caractere
       "sensitivityDown",
       "sensitivityUp",
       "cycleRange",

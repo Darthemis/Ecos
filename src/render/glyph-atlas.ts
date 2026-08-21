@@ -13,6 +13,7 @@
 
 import { CanvasTexture, NearestFilter, type Texture } from "three";
 import { SURFACE_MATERIAL_ORDER, SURFACE_MATERIALS } from "../world/surface-material";
+import { DEFAULT_GLYPH_DENSITY, GLYPH_DENSITIES } from "./glyph-density";
 
 /**
  * Rampa de densidade da familia base. Segue a gramatica do GDD §12.3: glifos
@@ -21,9 +22,13 @@ import { SURFACE_MATERIAL_ORDER, SURFACE_MATERIALS } from "../world/surface-mate
  */
 export const GLYPH_RAMP = SURFACE_MATERIALS.base.glifos;
 
-/** Tamanho da celula em pixels de CSS. Multiplicado pela densidade da tela. */
-export const GLYPH_CELL_WIDTH = 8;
-export const GLYPH_CELL_HEIGHT = 14;
+/**
+ * Tamanho da celula do degrau padrao, em pixels de CSS. Multiplicado pela
+ * densidade da tela. Os outros degraus vivem em glyph-density.ts e so entram
+ * pelo diagnostico.
+ */
+export const GLYPH_CELL_WIDTH = GLYPH_DENSITIES[DEFAULT_GLYPH_DENSITY].width;
+export const GLYPH_CELL_HEIGHT = GLYPH_DENSITIES[DEFAULT_GLYPH_DENSITY].height;
 
 /**
  * Tabelas de glifos na ordem canonica das familias. Todas tem o mesmo

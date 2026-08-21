@@ -18,6 +18,12 @@ import { ACTIVE_SCENE } from "../content/active-scene";
 import { createDiagnosticsOverlay, DIAGNOSTICS_ENABLED } from "../diagnostics/overlay";
 import { parseCapturePose, type CapturePose } from "../diagnostics/deterministic-capture";
 import {
+  DEFAULT_GLYPH_DENSITY,
+  glyphDensityAt,
+  glyphPixels,
+  nextGlyphDensity,
+} from "../render/glyph-density";
+import {
   applyDiagnosticCommand,
   INITIAL_DIAGNOSTIC_STATE,
   type DiagnosticState,
@@ -123,6 +129,11 @@ export function startGame(root: HTMLElement): Game {
   // Pose de captura. Nula no jogo; nao nula so quando uma ferramenta de medicao
   // a define. Ver src/diagnostics/deterministic-capture.ts.
   let capture: CapturePose | null = null;
+  // Densidade da grade. Conforto, e nao diagnostico: troca detalhe por
+  // legibilidade do caractere no ecra de quem joga, como a reducao de
+  // cintilacao e a sensibilidade da visada. Por isso existe tambem na
+  // construcao de producao.
+  let glyphDensity = DEFAULT_GLYPH_DENSITY;
 
   // Aplica o estado inteiro, campo a campo. Nenhum campo pode ficar sem efeito
   // por esquecimento: foi assim que `F5` deixou de funcionar na Fase 2.
@@ -155,7 +166,8 @@ export function startGame(root: HTMLElement): Game {
     // tela. Por isso o quadro é reduzido até o múltiplo exato e centralizado; a
     // sobra fica preta, que já é parte do mundo.
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-    const grade = computeGrid(root.clientWidth, root.clientHeight, dpr);
+    const celula = glyphDensityAt(glyphDensity);
+    const grade = computeGrid(root.clientWidth, root.clientHeight, dpr, celula.width, celula.height);
     const { cellWidth, cellHeight, bufferWidth, bufferHeight } = grade;
     columns = grade.columns;
     rows = grade.rows;
@@ -195,6 +207,15 @@ export function startGame(root: HTMLElement): Game {
         break;
       case "cycleRange":
         applyVisualRange(nextVisualRange(visualRange));
+        break;
+      case "cycleGlyphDensity":
+        // Conforto, como a reducao de cintilacao. Nao e um interruptor na cena:
+        // muda o tamanho da grade, e por isso refaz o alvo, o atlas e o passe —
+        // pelo mesmo caminho que um redimensionamento de janela.
+        glyphDensity = nextGlyphDensity(glyphDensity);
+        resize();
+        labelTimer = 2.2;
+        rangeLabel.textContent = `grade ${glyphDensityAt(glyphDensity).rotulo} · ${glyphDensityAt(glyphDensity).width}x${glyphDensityAt(glyphDensity).height}`;
         break;
       case "toggleFlickerReduction":
         // Conforto: vale no jogo normal, não é diagnóstico.
@@ -298,7 +319,7 @@ export function startGame(root: HTMLElement): Game {
       const summary = routeLog.summary();
       diagnostics.update(metrics.snapshot(), {
         cena: `${ACTIVE_SCENE.id} v${ACTIVE_SCENE.version} seed ${ACTIVE_SCENE.seed}`,
-        grade: `${columns} x ${rows}`,
+        grade: `${columns} x ${rows} · celula ${glyphDensityAt(glyphDensity).width}x${glyphDensityAt(glyphDensity).height} (${glyphDensityAt(glyphDensity).rotulo}) · ${glyphPixels(glyphDensity)} px por glifo`,
         alcance: `${visualRange} m`,
         posicao: `${state.player.position.x.toFixed(1)}, ${state.player.position.z.toFixed(1)} · y ${state.player.groundY.toFixed(2)}`,
         trecho: segmentAt(ACTIVE_SCENE, state.player.position) ?? "fora",

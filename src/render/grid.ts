@@ -17,10 +17,19 @@ export type GridLayout = {
   bufferHeight: number;
 };
 
-export function computeGrid(clientWidth: number, clientHeight: number, dpr: number): GridLayout {
+export function computeGrid(
+  clientWidth: number,
+  clientHeight: number,
+  dpr: number,
+  celulaX: number = GLYPH_CELL_WIDTH,
+  celulaY: number = GLYPH_CELL_HEIGHT,
+): GridLayout {
   const escala = Math.max(1, Math.min(3, dpr || 1));
-  const cellWidth = Math.max(4, Math.round(GLYPH_CELL_WIDTH * escala));
-  const cellHeight = Math.max(6, Math.round(GLYPH_CELL_HEIGHT * escala));
+  // O piso de 4 x 6 nao e estetico: abaixo disso o glifo deixa de caber no
+  // proprio texel, e o atlas passaria a desenhar caracteres uns por cima dos
+  // outros.
+  const cellWidth = Math.max(4, Math.round(celulaX * escala));
+  const cellHeight = Math.max(6, Math.round(celulaY * escala));
 
   const disponivelX = Math.max(320, Math.floor(clientWidth * escala));
   const disponivelY = Math.max(240, Math.floor(clientHeight * escala));
