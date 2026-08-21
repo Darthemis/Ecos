@@ -121,3 +121,85 @@ de glifos, sem cor) e o **escalonamento do Eco de Contato** (por eixo, condicion
 - **Ordem do alfa na cadeia completa de materiais.** O teste que prova a escrita
   depois de `<opaque_fragment>` exercita `attachSurfacePattern` isolado, não a
   cadeia real com `attachTopSurface` e `stabilizeLambertHue`.
+
+## Discutidos em 20/08/2026 — densidade, instanciação e o custo da imagem
+
+Conclusões de discussão com o responsável. Não são código: são o registro de
+decisões de rumo, para não serem refeitas do zero.
+
+### Setorização dimensionada pelo alcance, e não instanciação
+
+**Descartada a instanciação como resposta à densidade.** O argumento a favor era o
+número de chamadas de desenho numa floresta de centenas de troncos. Mas a visão
+deste jogo é curta e a névoa limita a distância: o que pode estar à vista cabe
+numa fatia de disco de algumas centenas de metros quadrados, **independentemente
+do tamanho da floresta**. Setorizar torna o custo constante em relação ao tamanho
+do mundo, que é propriedade melhor que "uma chamada em vez de oitocentas" —
+porque não tem teto.
+
+A infraestrutura já existe (`sectorIdForPoint`, grupos por setor em
+`scene-view.ts`). O que fica em aberto é **dimensionar**: os setores de hoje são
+regiões de sentido, desenhadas à mão para uma rua. Uma floresta precisa de
+regiões de custo, provavelmente uma grelha gerada, com tamanho da ordem do maior
+alcance visual. Grande demais ativa muito para ver pouco; pequeno demais paga em
+contabilidade e em objetos a atravessar fronteiras. As duas naturezas de setor
+podem coexistir no mesmo mecanismo, mas são conceitos diferentes.
+
+Consequência para as variantes de padrão: o argumento "a variante teria de viajar
+como atributo por instância" cai. Fica só o motivo que já valia por si —
+**a variante é dado do objeto, função pura da sua identidade, resolvida na camada
+pura**. Nunca `Math.random()`: isso quebraria a captura determinista e faria o
+mesmo tronco mudar de casca entre sessões.
+
+Três coisas que a setorização **não** resolve, e que ficam abertas:
+
+- **Oclusão.** Setor ativo não é o mesmo que visível. Num bosque denso desenha-se
+  muito mais do que se vê. Não é grave — o alvo é minúsculo —, mas não vale tentar
+  fechar essa diferença.
+- **A simulação.** Um tronco que cresce, arde ou seca custa CPU esteja ou não à
+  vista. É o que o GDD diz: o que a apresentação economiza, a simulação gasta. A
+  pergunta cara não será quantos troncos desenhar, será quantos simular com
+  fidelidade total — e a resposta vem da agregação de entidades distantes
+  (`AGENT_RULES` §12).
+- **A autoria.** Uma floresta não será escrita à mão como a rua. Setores gerados
+  implicam geração de conteúdo, determinista, como assunto próprio.
+
+### Coloração por família: o custo não é aritmético
+
+Trocar o escalar do padrão por uma cor custa duas multiplicações por fragmento
+num alvo de 8 160 pixels — irrelevante. O custo está noutro lugar:
+
+- **8 bits e luz linear.** Nuances finas num mundo escuro são exatamente o que o
+  alvo não segura. A Fase 1.2 vai bater de frente na faixa dinâmica já registrada
+  acima; é provável que ela tenha de ser resolvida **antes ou junto** com as
+  cores, e não depois.
+- **A cor é por célula.** Um texel do alvo é uma célula de glifo, e a 25 m uma
+  célula cobre bastante mundo. A variação cromática tem de acontecer em escalas
+  maiores que a célula, senão vira cintilação em movimento. É restrição de
+  desenho, não de desempenho.
+- **A favor:** `stabilizeLambertHue` garante que as luzes só alteram luminância,
+  então a nuance definida no material chega ao ecrã como foi definida. A
+  calibração de cor é previsível.
+
+### Três ideias sobre gerar a imagem mais barato
+
+**Mundo em 2D que "vira" 3D no filtro — possível, mas custaria o que já ganhámos.**
+O passe estrutural precisa de profundidade; é dela que vem a leitura de volume.
+Dados 2D podem produzir profundidade por coluna — lançamento de raios — e
+alimentariam este pipeline sem alteração, com paralaxe verdadeira e custo baixo.
+O preço é a liberdade vertical: rampas, patamares, sobreposições e olhar para
+cima e para baixo. As rampas foram corrigidas em `75ff2f1` precisamente porque a
+inclinação importa. Fica registrado como possibilidade, não como plano.
+
+**Formas 3D simples que o ASCII enriquece — já provado, e é o caminho.** O mundo
+inteiro é feito de caixas e lê-se como ruínas. Quem faz o trabalho é o passe
+estrutural. Conclusão prática: investir na camada de padrão, glifo e estrutura
+rende mais que investir em geometria, e é mais barato em desempenho e em autoria.
+
+**Renderizar muito pequeno e ampliar depois — já é o que acontece.** O alvo tem o
+tamanho exato da grade (`criarAlvo(columns, rows)`), um texel por célula: a cena
+3D inteira cabe em cerca de 8 mil pixels. Não há redução a fazer porque já está
+no mínimo. O único trabalho em resolução cheia é estampar os glifos, uma consulta
+de textura por pixel. É por isso que o preenchimento nunca apareceu nas medições:
+o estrangulamento medido foi a textura de profundidade sob rasterização por
+software, nunca o número de pixels.
