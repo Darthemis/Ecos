@@ -140,8 +140,11 @@ Um item desta lista é resolvido por protótipo ou playtest e, ao ser resolvido,
 
 - **Linter e formatador.** Nenhum foi adotado. A escolha (ESLint, Biome, Prettier
   ou nada) fica para quando houver código suficiente para justificar a regra.
-- **Integração contínua.** Não existe. `npm ci`, `npm test` e `npm run build` a
-  cada envio, e depois a captura determinista num teste de navegador real.
+- **Captura determinista num navegador real, no CI.** A integração contínua já
+  corre `npm ci`, `npm test`, `npm run build` e `npm run simulate` a cada envio
+  (Fase 1.4.1). Falta a comparação de pixels: exige o Playwright como
+  dependência de desenvolvimento, que é condição de paragem das `AGENT_RULES`
+  §11/§21 e precisa de autorização própria.
 - **Web Workers.** O GDD §25.1 os condiciona a medição. Só entram quando a
   medição justificar.
 - **Formato e migrações de save.** O Plano §5.3 exige versão e migrações desde o

@@ -1,0 +1,43 @@
+# Integração contínua mínima (Fase 1.4.1).
+#
+# Corre exatamente os comandos que o projeto já define em package.json, na
+# mesma ordem em que um humano os correria. Nada aqui é específico do CI: se
+# algum passo falhar, falha igual na máquina de quem desenvolve.
+#
+# O passo `npm test` inclui `tests/canonical-baseline.test.ts`, que compara o
+# SHA-256 do GDD e do Plano de Ação com `docs/canonical-hashes.json`. É o que
+# torna as AGENT_RULES verificáveis em vez de voluntárias: qualquer alteração
+# silenciosa de um documento canônico passa a quebrar o envio.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verificacao:
+    name: testes, tipos e construção
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obter o repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências travadas
+        run: npm ci
+
+      - name: Testes
+        run: npm test
+
+      - name: Checagem de tipos e construção
+        run: npm run build
+
+      - name: Comando de simulação
+        run: npm run simulate
