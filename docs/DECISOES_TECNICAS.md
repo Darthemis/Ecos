@@ -750,3 +750,44 @@ mesmos comandos. Decisão humana de 21/08/2026, sobre o registro da execução n
 **O que este CI não faz.** Não mede desempenho, não compara pixels, não publica
 nada, não toca no ambiente de ninguém. Não há segredos, nem credenciais, nem
 rede além do registro do npm.
+
+---
+
+## Fase 1.4.2 — A imagem em navegador real
+
+A imagem deste jogo só existe na GPU: o passe ASCII é um shader, e a família de
+material viaja no canal alfa do alvo da cena. Nenhum teste unitário pode vê-la —
+o defeito da Fase 1.1.1 atravessou 234 testes verdes.
+
+| Decisão | Alternativa descartada | Motivo |
+| --- | --- | --- |
+| **Diferenciais e invariantes, sem imagem de referência** | Imagem-ouro comparada byte a byte | A imagem-ouro é mais forte e mais frágil: uma subida de versão do navegador quebra-a sem nada no projeto ter mudado. Pior, não teria apanhado o defeito da 1.1.1 — teria sido gerada *com* ele e o teria trancado como correto. |
+| Comando próprio (`npm run test:browser`) e *job* separado | Dentro de `npm test` | O ciclo rápido continua a responder em segundos; quem desenvolve sem navegador instalado não fica bloqueado; e uma falha de navegador nunca se disfarça de falha de unidade. |
+| `npm run dev`, não `vite preview` | Testar a construção de produção | `window.__ecosCapture` está atrás de `import.meta.env.DEV`. Testar produção exigiria abrir a superfície de medição ao jogador — exatamente o que as regras proíbem. O teste alcança a medição só em desenvolvimento. |
+| Sem repetições (`retries: 0`) | Uma repetição para absorver instabilidade | O conjunto afirma que a imagem é reproduzível. Uma repetição que passasse na segunda tentativa esconderia precisamente o que ele existe para detectar. |
+| Medir decodificando **no navegador** | Decodificador de PNG em Node | Na Fase 1.2 li um PNG de três canais com passo quatro e todos os números de cor que apresentei ficaram inválidos. O decodificador do navegador não erra o passo. |
+| Sem publicação de relatório em caso de falha | `upload-artifact` | Sem imagem de referência guardada, o relatório traz pouco além do registro, e evita mais uma *action* de terceiros. Uma falha reproduz-se com o mesmo comando na máquina de quem desenvolve. |
+
+**Duas descobertas da própria implementação, ambas correções minhas:**
+
+**A imagem tem aquecimento.** Com a pose ativa, os primeiros quadros depois de
+carregar a página ainda mudam entre si; por volta do décimo terceiro a imagem
+estabiliza e depois fica idêntica byte a byte por mais de cento e vinte quadros.
+Um número fixo de quadros mediria dentro do aquecimento numa máquina mais lenta,
+por isso `imagemEstavel` espera dois quadros consecutivos iguais — e falha alto
+se o ponto fixo não chegar. **O que aquece nesses treze quadros continua por
+identificar**, e está registrado em `EXPERIMENTOS_ABERTOS.md`.
+
+**A captura de um elemento fotografa a região da página, não só o elemento.** As
+primeiras medições incluíam o radar verde e a frase de ajuda do rodapé, que são
+DOM por cima do canvas. Medir cor assim seria medir o verde do radar e chamar-lhe
+cor do mundo. `esconderSobreposicoes` remove os irmãos do canvas antes de medir;
+com eles escondidos, a amplitude cromática do mundo mede 168/255 — a afirmação
+sobrevive, mas até aqui estava mal medida.
+
+**Uma pose por afirmação, e a razão disso.** Em `POSE_CORREDOR` nenhuma das
+quatro fontes do mundo está em alcance, e apagá-las todas não muda um pixel —
+o que é a decisão fechada a funcionar. A afirmação sobre luz precisa de
+`POSE_BRECHA`, junto da fonte fria; lá, apagar as luzes tira quase metade dos
+glifos acesos. As duas ficaram no conjunto: uma prova que a luz chega, a outra
+que ela respeita o seu raio.

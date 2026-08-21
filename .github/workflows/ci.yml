@@ -41,3 +41,34 @@ jobs:
 
       - name: Comando de simulação
         run: npm run simulate
+
+  # Job separado de proposito. Uma falha de navegador nunca deve disfarcar-se de
+  # falha de unidade, e o conjunto acima continua a responder em segundos mesmo
+  # quando este demora minutos.
+  imagem:
+    name: imagem em navegador real
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obter o repositório
+        uses: actions/checkout@v5
+
+      - name: Preparar Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências travadas
+        run: npm ci
+
+      - name: Instalar o Chromium do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Testes de imagem
+        run: npm run test:browser
+
+      # Sem publicacao de relatorio. Nao ha imagem de referencia guardada, entao
+      # um relatorio traria pouco alem do que o registo ja mostra — e uma falha
+      # aqui reproduz-se na maquina de quem desenvolve com `npm run test:browser`,
+      # que e a mesma regra do resto deste CI.
