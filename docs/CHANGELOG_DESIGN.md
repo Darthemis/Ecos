@@ -31,6 +31,53 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-21 — O vinco mais fraco na grade densa é desejado, e não uma dívida
+
+- **Decisão afetada:** revoga a dívida registrada em 20/08/2026 junto com a
+  densidade da grade. Não há recalibração a fazer.
+- **O que se mediu.** A resposta estrutural é a segunda diferença do inverso da
+  profundidade entre células vizinhas. Sobre uma **quebra de plano** ela vale
+  `|mudança de inclinação| × espaçamento` e escala com o tamanho da célula; sobre
+  uma **descontinuidade verdadeira** o salto é o salto, e não depende do
+  espaçamento. Medido no módulo puro: plano dá zero em qualquer espaçamento; o
+  degrau dá 0,9976 contra 0,9979 nas duas células; o vinco cai de 0,5505 para
+  0,3669, e o total da célula de 0,1811 para 0,1129 — 38% mais fraco.
+- **Depois:** a assimetria fica. Onde os detalhes são mais finos, os vincos são
+  mais discretos, e a avaliação visual do responsável em 21/08/2026 aprovou isso
+  como **melhor** do que a alternativa. A escala das três aparências passa a ser
+  parte do que cada uma é, e não um erro a corrigir.
+- **Consequência prática:** as três densidades dão reforços diferentes na mesma
+  geometria, de propósito. Quem ler isto no futuro não deve "corrigir" os limiares
+  de vinco e canto para os fazer coincidir.
+- **Justificativa:** avaliação visual humana, sobre a medição analítica confirmada
+  no módulo puro antes de qualquer alteração de código.
+- **Aprovação humana:** responsável, 21/08/2026.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+- **Impacto no código:** nenhum. A decisão foi não alterar.
+
+## 2026-08-21 — Fase 1.3: a branch padrão apontava para a versão reprovada
+
+- **Decisão afetada:** governança do repositório. Nenhuma decisão de design muda.
+- **O que se encontrou.** Não existia `main` nem `master`. O histórico bifurca em
+  `0ab690d` ("A Rua Interrompida"): de um lado `c602cc2`, a tentativa monolítica
+  **reprovada visualmente**; do outro a linha decomposta e aprovada, até `e76f7d2`.
+  E `claude/new-session-kl1cbd` — a branch padrão do repositório — apontava para
+  `c602cc2`. **Quem clonasse o repositório recebia a versão reprovada.** Nenhum
+  pull request tinha sido aberto, em nenhuma direção.
+- **Depois:** `main` nasce em `0ab690d`, o último estado comum aos dois caminhos —
+  base neutra, que não enterra nem privilegia nenhuma das duas experiências. A
+  linha aprovada entra por pull request, cujo corpo documenta que substitui a
+  tentativa monolítica. A monolítica **permanece arquivada e por integrar**, com o
+  motivo escrito.
+- **Passada de consistência nos documentos.** O README passa a dizer só o presente;
+  `EXPERIMENTOS_ABERTOS.md` passa a listar só o que continua aberto, organizado por
+  assunto e não por fase que o abriu; o changelog fica sendo o histórico. Itens
+  resolvidos saíram da lista de abertos: a faixa dinâmica, o instrumento de captura
+  não determinista, e a recalibração do vinco — que virou decisão, acima.
+- **Aprovação humana:** responsável, 21/08/2026, autorizando a execução direta.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+- **Impacto no código:** nenhum. Só documentos e referências de Git.
+
 ## 2026-08-20 — A densidade da grade passa a ser escolha do jogador, e o padrão muda
 
 - **Decisão afetada:** o tamanho da célula de glifo, que era uma constante única

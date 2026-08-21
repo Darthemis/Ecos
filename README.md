@@ -8,66 +8,57 @@
 
 ## FASE ATIVA
 
-**Fase 1.1 — Legibilidade perceptiva do lugar: em curso, por experiências isoladas.**
+**Fase 1.3 — governança e documentos.** A camada perceptiva está construída e
+aguarda o Portão 1. O que falta antes da Fase 2 está numerado em passos pequenos,
+cada um com avaliação humana própria: documentos e branches (1.3), integração
+contínua (1.4), corpo e cor das fontes de luz (1.5), variação tonal por estrutura
+(1.6), os chãos (1.7), o Portão 1 (1.8) e o congelamento da camada perceptiva
+(1.9).
 
-Esta etapa chamou-se **Fase 2.1** até 20/08/2026. O número estava errado: a Fase 2
-do Plano §7 é *Pulso e consequência* — Cartas de Intenção, resolução por
-simulação, evento causal —, e **nada disso existe ainda**. Tudo o que foi
-construído é percepção, ou seja Fase 1. A renumeração alinha o repositório ao
-Plano; nenhum documento canônico foi alterado. Ver `CHANGELOG_DESIGN.md`,
-entrada de 20/08/2026.
+**A Fase 2 do Plano §7 — *Pulso e consequência* — ainda não começou.** Não existem
+Cartas de Intenção, memória causal, NPCs, IA, inventário, Recomeço nem as quatro
+telas. Tudo o que existe é percepção.
 
-A tentativa monolítica não foi aprovada visualmente e foi decomposta em
-experiências pequenas e isoladas, uma de cada vez, cada uma com avaliação humana
-própria. Ela **não foi apagada**: está preservada em
-`archive/fase-2.1-monolitica`, cujo nome conserva a numeração antiga por ser uma
-referência de Git já publicada.
+---
 
-Já avaliadas e aprovadas: legibilidade estrutural (silhueta, descontinuidade de
-profundidade, encontro de planos e canto), visibilidade discreta dos topos,
-rampas desenhadas como rampas, famílias de material por padrão e densidade de
-glifos, e o Eco de Contato — cor neutra, tamanho condicionado ao objeto e
-formato de caixa arredondada dissolvida em grão.
+## O que existe hoje
 
-**Densidade da grade.** A célula de glifo deixou de ser uma constante única.
-São três aparências, escolhidas com `G`: **equilibrada** (6 × 10, o padrão — não
-perde nenhum glifo e quase dobra o número de células), **nítida** (8 × 14, o
-comportamento histórico) e **textura** (4 × 7, onde os caracteres deixam de se
-distinguir e a imagem passa a valer como superfície — escolhida de propósito,
-não tolerada). O número de células acompanha os pixels da janela, então um ecrã
-maior recebe mais mundo com a mesma fidelidade.
+Um percurso de cerca de 120 metros por uma rua de ruínas, em primeira pessoa e
+ASCII colorido sobre fundo preto. Três trechos de ritmo espacial distinto — praça
+aberta, corredor comprimido com curva e rampa, bacia que se abre —, duas rotas que
+convergem, dois marcos e um vestígio silencioso de um acontecimento passado.
+Alcance visual de 8, 15 ou 25 metros, radar/bússola verde, som espacial de vários
+emissores e medição separada de simulação e renderização.
 
-**Fase 1.2 — faixa dinâmica e cor.** O alvo da cena passou de 8 bits para meia
-precisão: os 8 bits impunham um degrau em 0,078 de luminância percebida,
-exatamente na faixa onde este mundo vive, e ninguém o tinha escolhido. Cada
-família de material ganhou uma matiz — rocha azul-ardósia, ruína ocre, monólito
-violeta —, e o chão, as rampas e os patamares ficam **neutros**. O Eco de Contato
-deixou de ter cor própria: toma a da superfície onde está.
+**A luz pertence ao mundo, não ao personagem.** Sem uma fonte próxima, o terreno
+aos pés é quase inteiramente preto e restam poucos glifos esparsos; junto de uma
+fonte — hoje o calor que escapa da máquina soterrada sob a ruína — a região
+alcançada revela terreno e objetos.
 
-**Fase 1.1.1 — correção:** as famílias de material tinham sido registradas como
-funcionando e **não funcionavam** — nenhum pixel era desenhado com a tabela de
-glifos da sua família, sem erro nem aviso. A causa era a partilha de programas
-compilados do Three entre materiais com a mesma chave. Só apareceu depois de a
-captura determinista baixar o ruído de medição a zero. Ver `CHANGELOG_DESIGN.md`
-e `DECISOES_TECNICAS.md`.
+**Legibilidade estrutural.** Silhueta, descontinuidade de profundidade, encontro
+de planos e canto recebem mais densidade de glifo. É representação perceptiva, não
+luz: nada acende, nada inventa matiz, e o reforço não existe além do alcance.
 
-Continuam adiados: cor semântica de materiais, variação tonal entre instâncias,
-campo luminoso com núcleo e cauda, propagação ampliada das fontes, continuidade
-das superfícies horizontais e as duas geometrias complexas.
+**Matéria por padrão e cor.** Cada família de material — pedra, ruína, monólito —
+tem o seu grão, a sua tabela de glifos e a sua matiz: azul-ardósia, ocre e violeta.
+Chão, rampas e patamares ficam neutros e sem padrão. As famílias separam-se pelo
+ângulo da matiz, nunca por saturação.
 
-Os Portões 1 e 2 continuam aguardando teste humano.
+**Eco de Contato** (experiência provisória): o que toca o terreno torna
+minimamente legível o lugar onde o toca — um poço junto da base, mais fraco que o
+próprio objeto, com a cor da superfície onde está, o tamanho condicionado à base de
+cada objeto e o contorno dissolvido em grão. Não é luz: é o terreno que se
+sombreia, então paredes o ocultam pelo simples teste de profundidade.
 
-O que existe hoje: um percurso de cerca de 120 metros por uma rua de ruínas, em primeira pessoa e ASCII colorido sobre fundo preto. Três trechos de ritmo espacial distinto — praça aberta, corredor comprimido com curva e rampa, bacia que se abre —, duas rotas que convergem, dois marcos e um vestígio silencioso de um acontecimento passado. Alcance visual de 8, 15 ou 25 metros, radar/bússola verde, som espacial de vários emissores e medição separada de simulação e renderização.
+**Densidade da grade.** A célula de glifo é escolha do jogador, com `G`:
+**equilibrada** (6 × 10, o padrão), **nítida** (8 × 14) e **textura** (4 × 7, onde
+os caracteres deixam de se distinguir e a imagem passa a valer como superfície —
+escolhida de propósito, não tolerada). O número de células acompanha os pixels da
+janela, então um ecrã maior recebe mais mundo com a mesma fidelidade.
 
-O teste do Portão 1 foi **adiado deliberadamente**, a pedido do responsável, e será feito junto com o do Portão 2 num único ciclo. Nenhum agente pode declarar qualquer um dos dois aprovado.
-
-**Eco de Contato** (experiência provisória): o que toca o terreno torna minimamente legível o lugar onde o toca — um poço junto da base, mais fraco que o próprio objeto, com a cor da superfície onde está, com o tamanho condicionado à base de cada objeto e o contorno dissolvido em grão em vez de terminar numa curva. Não é luz: é o terreno que se sombreia, então paredes o ocultam pelo simples teste de profundidade.
-
-**Matéria por padrão, não por cor.** Cada família de material — hoje pedra, ruína e monólito — tem o seu grão e a sua tabela de glifos. Todas as superfícies continuam neutras: a matéria distingue-se por textura e densidade, nunca por matiz.
-
-**A luz pertence ao mundo, não ao personagem.** Sem uma fonte próxima, o terreno aos pés é quase inteiramente preto e restam poucos glifos esparsos; junto de uma fonte — hoje o calor que escapa da máquina soterrada sob a ruína — a região alcançada revela terreno e objetos.
-
-O que **não** existe: Cartas de Intenção, NPCs, memória causal, IA, inventário, Recomeço e as quatro telas — isto é, a Fase 2 do Plano §7 ainda não começou. Ela não começa antes do marco humano (Plano §14): a legibilidade e a identidade visual são avaliadas jogando, não por relatório.
+**Portões 1 e 2 aguardam teste humano.** O teste do Portão 1 foi adiado
+deliberadamente e será feito num único ciclo, sem diagnósticos e com pessoas que
+não conhecem a cena. Nenhum agente pode declarar qualquer um dos dois aprovado.
 
 ---
 
