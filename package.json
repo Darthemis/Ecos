@@ -10,10 +10,12 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest run",
+    "test:browser": "playwright test",
     "build": "tsc --noEmit && vite build",
     "simulate": "tsx tools/simulate.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.10.2",
     "@types/three": "^0.185.4",
     "jsdom": "^25.0.1",

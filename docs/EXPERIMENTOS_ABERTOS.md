@@ -140,11 +140,15 @@ Um item desta lista é resolvido por protótipo ou playtest e, ao ser resolvido,
 
 - **Linter e formatador.** Nenhum foi adotado. A escolha (ESLint, Biome, Prettier
   ou nada) fica para quando houver código suficiente para justificar a regra.
-- **Captura determinista num navegador real, no CI.** A integração contínua já
-  corre `npm ci`, `npm test`, `npm run build` e `npm run simulate` a cada envio
-  (Fase 1.4.1). Falta a comparação de pixels: exige o Playwright como
-  dependência de desenvolvimento, que é condição de paragem das `AGENT_RULES`
-  §11/§21 e precisa de autorização própria.
+- **O que aquece nos primeiros treze quadros.** Com a pose de captura ativa, a
+  imagem só estabiliza por volta do décimo terceiro quadro depois de carregar a
+  página, e a partir daí fica idêntica byte a byte indefinidamente. A causa não
+  foi identificada — o teste espera o ponto fixo em vez de a explicar. Enquanto
+  não se souber, nenhuma medição vale nos primeiros quadros de uma página nova.
+- **Imagem de referência guardada.** Ficou de fora da Fase 1.4.2 de propósito, e
+  a razão está em `DECISOES_TECNICAS.md`. Se um dia a leitura visual congelar
+  (Fase 1.9), uma imagem-ouro passa a fazer sentido: aí ela protege uma decisão,
+  em vez de trancar um estado acidental.
 - **Web Workers.** O GDD §25.1 os condiciona a medição. Só entram quando a
   medição justificar.
 - **Formato e migrações de save.** O Plano §5.3 exige versão e migrações desde o

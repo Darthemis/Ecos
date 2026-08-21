@@ -55,6 +55,35 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 - **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
 - **Impacto no código:** nenhum. A decisão foi não alterar.
 
+## 2026-08-21 — Fase 1.4.2: a imagem passa a ser verificada em navegador real
+
+- **Decisão afetada:** nenhuma decisão de design muda. O que muda é o que o
+  projeto consegue provar sobre a própria imagem.
+- **Antes:** 234 testes de unidade verdes, e nenhum deles capaz de ver um pixel.
+  O defeito da Fase 1.1.1 — a matéria por padrão nunca chegou ao ecrã — atravessou
+  todos eles, porque vivia na partilha de programas compilados dentro da GPU.
+- **Depois:** sete afirmações num Chromium real, atrás de `npm run test:browser`
+  e de um *job* de CI separado. **Sem imagem de referência guardada:**
+  diferenciais (a relação entre duas capturas na mesma pose) e invariantes
+  (afirmações sobre uma imagem que não dependem do *driver*). O porquê está em
+  `DECISOES_TECNICAS.md`.
+- **O que passa a estar protegido:** que duas execuções na mesma pose produzem o
+  mesmo arquivo; que o quadro não é preto e tem faixa dinâmica; que a cor chega
+  ao ecrã; que desligar o padrão por família muda os pixels — o defeito da 1.1.1
+  em uma linha; que mudar a densidade da grade muda os pixels; que apagar as
+  luzes escurece a cena junto de uma fonte e **não muda nada** longe dela.
+- **Uma dependência nova, autorizada:** `@playwright/test`, a primeira desde a
+  Fase 0. O custo foi apresentado antes: o binário do Chromium no CI e o tempo
+  do *job*. Nada em `src/` mudou.
+- **Duas correções minhas, encontradas ao implementar.** A imagem tem um
+  aquecimento de cerca de treze quadros, e as minhas primeiras medições ficavam
+  dentro dele. E a captura de um elemento fotografa a região da página: as
+  primeiras medições de cor incluíam o radar verde e a frase de ajuda do rodapé.
+  Com as sobreposições escondidas, o mundo mede 168/255 de amplitude cromática —
+  a afirmação sobrevive, mas até aqui estava mal medida.
+- **Aprovação humana:** responsável, 21/08/2026, sobre a proposta B+C.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+
 ## 2026-08-21 — Fase 1.4.1: a guarda documental passa a ser obrigatória
 
 - **Decisão afetada:** nenhuma decisão de design muda. Muda a garantia de que as

@@ -106,12 +106,17 @@ npm run dev      # servidor de desenvolvimento
 npm run test     # testes (Vitest)
 npm run build    # checagem de tipos + bundle de produção
 npm run simulate # ferramenta de simulação acelerada (stub até haver relógio)
+npm run test:browser # sete afirmações sobre a imagem, num Chromium real
 ```
 
 Requer Node 20 ou superior. Abra o endereço que o `npm run dev` imprimir e clique na tela: o clique captura o mouse e libera o áudio, que o navegador não inicia sem um gesto.
 
 A cada envio e a cada pull request, `.github/workflows/ci.yml` corre `npm ci`,
-`npm test`, `npm run build` e `npm run simulate` num Ubuntu limpo com Node 22.
+`npm test`, `npm run build` e `npm run simulate` num Ubuntu limpo com Node 22, e
+num *job* separado `npm run test:browser`, que abre um Chromium real e verifica a
+imagem. O teste de navegador fica fora de `npm test` de propósito: o ciclo rápido
+continua a responder em segundos, e uma falha de navegador nunca se disfarça de
+falha de unidade.
 Como `npm test` inclui a guarda documental, alterar um documento canônico sem
 atualizar `docs/canonical-hashes.json` quebra o envio — que é exatamente o que
 as `AGENT_RULES.md` exigem.

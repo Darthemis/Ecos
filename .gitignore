@@ -4,3 +4,7 @@ coverage/
 *.local
 .DS_Store
 .vite/
+
+# Saidas do teste de navegador (Fase 1.4.2). Nada aqui e fonte.
+test-results/
+playwright-report/
