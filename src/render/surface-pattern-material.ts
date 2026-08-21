@@ -104,6 +104,8 @@ export function attachSurfacePattern(
   };
 
   const previousCompile = material.onBeforeCompile;
+  const previousKey = material.customProgramCacheKey.bind(material);
+
   material.onBeforeCompile = (
     shader: WebGLProgramParametersWithUniforms,
     renderer: WebGLRenderer,
@@ -139,6 +141,24 @@ export function attachSurfacePattern(
       .replace(ALPHA_HOOK, ALPHA_INJECTION);
   };
 
+  // Identidade propria na chave de programa. Sem isto, o padrao nao chega ao
+  // ecra — e nao chegava.
+  //
+  // O Three partilha programas ja compilados entre materiais cuja chave coincide
+  // (WebGLPrograms.acquireProgram, mapa global por chave). A chave por omissao e
+  // o texto de `onBeforeCompile`, e dois fechos com o mesmo codigo-fonte dao o
+  // mesmo texto — mesmo quando um deles injetou este padrao e o outro nao.
+  //
+  // Rampas e patamares sao criados antes dos obstaculos em scene-view.ts e usam
+  // a mesma cadeia menos este modulo. A chave saia igual, o programa da rampa —
+  // sem padrao e sem escrita de alfa — era compilado primeiro, e todos os
+  // obstaculos passavam a usa-lo. As uniformes continuavam a ser atribuidas por
+  // material, mas para uniformes que aquele programa nao tinha: silencio total.
+  //
+  // O sintoma era exatamente nenhum: nem o padrao nem a familia produziam um
+  // unico pixel de diferenca. So apareceu quando a captura determinista baixou o
+  // ruido de medicao a zero.
+  material.customProgramCacheKey = () => `${previousKey()}|ecos-surface-pattern-v1`;
   material.needsUpdate = true;
 
   return {

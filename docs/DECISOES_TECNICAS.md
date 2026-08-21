@@ -555,3 +555,72 @@ Duas lacunas conhecidas e não fechadas: a caminhada depende do tempo de quadro,
 que torna a captura irreprodutível; e o teste de ordenação do alfa exercita
 `attachSurfacePattern` isolado, não a cadeia real
 `stabilizeLambertHue( attachTopSurface( attachSurfacePattern( … ) ) )`.
+
+## Fase 1.1.1 — A materia por padrao nunca chegou ao ecra
+
+O commit `42f6728` foi registrado como funcionando. Nao funcionava: nenhum pixel
+era desenhado com a tabela de glifos da sua familia, e nem o padrao nem o alfa
+produziam qualquer efeito.
+
+### A causa
+
+O Three guarda os programas compilados num **mapa global por chave**
+(`WebGLPrograms.acquireProgram`) e reaproveita o primeiro que entrou. A chave por
+omissao e `this.onBeforeCompile.toString()` — o **texto** da funcao. Fechos com o
+mesmo codigo-fonte dao o mesmo texto, mesmo quando fecham sobre valores
+diferentes, e mesmo quando um deles injetou codigo que o outro nao tem.
+
+`stabilizeLambertHue` compunha a chave a partir de `previousCompile.toString()`,
+o que reproduzia o problema em vez de o evitar: para uma rampa e para um
+obstaculo o texto era identico, porque em ambos o elo anterior era o fecho de
+`attachTopSurface`.
+
+Rampas e patamares sao criados **antes** dos obstaculos em `scene-view.ts`. O
+programa da rampa — sem padrao, sem escrita de alfa — era compilado primeiro e
+passava a servir todos os obstaculos. As uniformes continuavam a ser atribuidas
+por material, mas para uniformes que aquele programa nao possuia: escrita no
+vazio, sem erro nem aviso.
+
+### A correcao
+
+Cada elo da cadeia compoe a chave anterior e acrescenta a sua identidade:
+
+```
+…|ecos-surface-pattern-v1|ecos-top-surface-v1|ecos-stable-lambert-hue-v1
+```
+
+Um obstaculo deixa de poder partilhar programa com uma rampa. Duas rampas
+continuam a partilhar, que e o comportamento desejado.
+
+### Medicao
+
+Trocar as tres tabelas de glifos por tabelas solidas, em seis poses, com ruido de
+captura zero:
+
+| Pose | Antes | Depois |
+| --- | --- | --- |
+| rocha-praca-a | 0 | 65 895 |
+| rocha-praca-b | 0 | 87 817 |
+| ruina-praca-c | 0 | 23 035 |
+| rocha-praca-d | 0 | 94 616 |
+| brecha-monte | 0 | 266 068 |
+| muro-oeste | 0 | 180 588 |
+
+### Por que nenhum teste apanhou, e o que mudou
+
+Todos os testes verificavam o **texto do shader**, que estava correto do inicio
+ao fim. O shader certo nunca chegava a ser compilado. Verificar texto de shader
+nao prova que aquele shader e o que corre.
+
+A guarda nova verifica a **chave de programa**, que e o que decide qual codigo
+corre: uma rampa e um obstaculo nao podem partilha-la, duas rampas devem, cada
+elo tem de aparecer na ordem da cadeia, e nenhum modulo pode voltar a usar
+`previousCompile.toString()`. Prova negativa: retirando a chave do padrao, tres
+testes falham.
+
+### A licao, que e maior que o defeito
+
+Uma prova estatica sobre o texto de um shader nao prova o pixel no ecra. Eu tratei
+uma pela outra e escrevi o resultado nos documentos como verificado. Foi
+necessario um instrumento com ruido zero para a diferenca entre "o codigo esta
+certo" e "a coisa funciona" se tornar observavel.

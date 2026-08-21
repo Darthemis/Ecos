@@ -50,6 +50,7 @@ totalEmissiveRadiance += ecosTopoMatiz * ecosParaCima * uTopoPiso;
  */
 export function attachTopSurface(material: MeshLambertMaterial): MeshLambertMaterial {
   const previousCompile = material.onBeforeCompile;
+  const previousKey = material.customProgramCacheKey.bind(material);
 
   material.onBeforeCompile = (
     shader: WebGLProgramParametersWithUniforms,
@@ -80,6 +81,7 @@ export function attachTopSurface(material: MeshLambertMaterial): MeshLambertMate
 
   // O material precisa de emissao para que totalEmissiveRadiance seja usado.
   material.emissive.setRGB(0, 0, 0);
+  material.customProgramCacheKey = () => `${previousKey()}|ecos-top-surface-v1`;
   material.needsUpdate = true;
   return material;
 }

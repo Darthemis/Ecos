@@ -31,6 +31,49 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-20 — Fase 1.1.1: a materia por padrao nunca chegou ao ecra
+
+- **Decisao afetada:** nenhuma decisao nova. Esta entrada **corrige uma afirmacao
+  falsa** das entradas de 20/08/2026 e do `README`: as familias de material
+  foram registradas como funcionando e **nao funcionavam**. Nenhum pixel do jogo
+  era desenhado com a tabela de glifos da sua familia.
+- **A causa.** O Three partilha programas ja compilados entre materiais cuja
+  chave de programa coincide, num mapa global por chave
+  (`WebGLPrograms.acquireProgram`). A chave por omissao e o texto de
+  `onBeforeCompile`, e dois fechos com o mesmo codigo-fonte produzem o mesmo
+  texto — mesmo quando um deles injetou o padrao e o outro nao. Rampas e
+  patamares usam a mesma cadeia menos o padrao e sao criados **antes** dos
+  obstaculos; o programa da rampa era compilado primeiro e passava a servir todos
+  os obstaculos. As uniformes continuavam a ser atribuidas por material, mas para
+  uniformes que aquele programa nao possuia.
+- **O sintoma era exatamente nenhum.** Nem o padrao nem a familia produziam um
+  unico pixel de diferenca, e nada falhava: sem erro, sem aviso, sem teste
+  vermelho.
+- **Por que nenhum teste apanhou.** Todos verificavam o **texto do shader**, que
+  estava correto. O shader certo simplesmente nunca chegava a ser compilado. A
+  guarda nova verifica a **chave de programa**: uma rampa e um obstaculo nao
+  podem partilha-la, duas rampas devem, e nenhum elo da cadeia pode substituir a
+  chave anterior por texto de funcao. Prova negativa: retirando a chave do
+  padrao, tres testes falham.
+- **Como foi encontrado.** Pela captura determinista (`9a582d6`), que baixou o
+  ruido de medicao de 11–28% para zero. Com o ruido a zero, trocar as tres
+  tabelas de glifos por solidas media 0 pixels em seis poses; depois da correcao,
+  mede entre 23 mil e 266 mil.
+- **Correcao:** cada elo da cadeia de materiais passa a compor a chave anterior e
+  a acrescentar a sua identidade, em vez de a substituir.
+- **Aprovação humana:** autorizada pelo responsável em 20/08/2026, com o rótulo
+  1.1.1 para esta correção.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+- **Impacto no código:** `src/render/surface-pattern-material.ts`,
+  `src/render/top-surface-material.ts`, `src/render/stable-hue-material.ts`,
+  `tests/materiais-de-superficie.test.ts`.
+- **Lição que fica registrada, e que é maior que o defeito:** eu tratei uma prova
+  estática — a ordem correta no texto do shader — como se provasse o pixel no
+  ecrã, e escrevi isso nos documentos como resultado verificado. Não provava. Sem
+  instrumento de medição, a diferença entre "o código está certo" e "a coisa
+  funciona" não é observável, e eu preenchi essa lacuna com confiança em vez de
+  medição.
+
 ## 2026-08-20 — A fase atual é renumerada de 2.1 para 1.1
 
 - **Decisão afetada:** nenhuma decisão fechada. Correção de **numeração**, para o

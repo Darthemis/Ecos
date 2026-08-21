@@ -29,6 +29,13 @@ rampas desenhadas como rampas, famílias de material por padrão e densidade de
 glifos, e o Eco de Contato — cor neutra, tamanho condicionado ao objeto e
 formato de caixa arredondada dissolvida em grão.
 
+**Fase 1.1.1 — correção:** as famílias de material tinham sido registradas como
+funcionando e **não funcionavam** — nenhum pixel era desenhado com a tabela de
+glifos da sua família, sem erro nem aviso. A causa era a partilha de programas
+compilados do Three entre materiais com a mesma chave. Só apareceu depois de a
+captura determinista baixar o ruído de medição a zero. Ver `CHANGELOG_DESIGN.md`
+e `DECISOES_TECNICAS.md`.
+
 Continuam adiados: cor semântica de materiais, variação tonal entre instâncias,
 campo luminoso com núcleo e cauda, propagação ampliada das fontes, continuidade
 das superfícies horizontais e as duas geometrias complexas.
@@ -127,6 +134,7 @@ Só existe em `npm run dev`. A construção de produção não contém esse cód
 | `F8` | alterna as três intensidades do Eco de Contato |
 | `F9` | bordas dos setores e planta do percurso registrado |
 | `F11` | exporta o percurso registrado em texto, no console |
+| — | captura determinista: `window.__ecosCapture({ x, z, eyeY, yaw, pitch, seconds })` fixa o ponto de vista e congela o relógio da cena, para que duas execuções produzam o mesmo arquivo |
 | `B` | liga e desliga o reforço estrutural — desligado é a saída visual anterior |
 | `N` | só a máscara estrutural, sem a cena por baixo |
 | `M` | isola a parte do sinal: tudo → silhueta e degrau → vinco e canto |

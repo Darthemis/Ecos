@@ -28,7 +28,11 @@ vec3 outgoingLight = ecosStableDiffuse + totalEmissiveRadiance;
 /** Faz luzes alterarem somente o brilho difuso, nunca o matiz do material. */
 export function stabilizeLambertHue(material: MeshLambertMaterial): MeshLambertMaterial {
   const previousCompile = material.onBeforeCompile;
-  const previousKey = previousCompile.toString();
+  // A chave tem de vir da chave anterior, e nao do texto da funcao de compilacao.
+  // Ver a nota em surface-pattern-material.ts: fechos com o mesmo codigo-fonte
+  // produzem o mesmo texto, e o Three partilha programas compilados entre
+  // materiais cuja chave coincide.
+  const previousKey = material.customProgramCacheKey.bind(material);
 
   material.onBeforeCompile = (
     shader: WebGLProgramParametersWithUniforms,
@@ -41,7 +45,7 @@ export function stabilizeLambertHue(material: MeshLambertMaterial): MeshLambertM
     shader.fragmentShader = shader.fragmentShader.replace(LIGHT_OUTPUT, STABLE_HUE_OUTPUT);
   };
 
-  material.customProgramCacheKey = () => `${previousKey}|ecos-stable-lambert-hue-v1`;
+  material.customProgramCacheKey = () => `${previousKey()}|ecos-stable-lambert-hue-v1`;
   material.needsUpdate = true;
   return material;
 }

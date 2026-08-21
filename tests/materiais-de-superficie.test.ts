@@ -9,9 +9,12 @@ import {
   SURFACE_MATERIAL_ORDER,
   SURFACE_MATERIALS,
   surfaceMaterialIndex,
+  type SurfaceMaterialId,
 } from "../src/world/surface-material";
 import { GLYPH_RAMP, GLYPH_TABLES } from "../src/render/glyph-atlas";
 import { attachSurfacePattern } from "../src/render/surface-pattern-material";
+import { attachTopSurface } from "../src/render/top-surface-material";
+import { stabilizeLambertHue } from "../src/render/stable-hue-material";
 import {
   MeshLambertMaterial,
   NormalBlending,
@@ -222,5 +225,63 @@ describe("o alfa da familia sobrevive ao shader real do Three", () => {
     const luz = fonte.indexOf("vec3 outgoingLight");
     expect(padrao).toBeGreaterThan(-1);
     expect(luz).toBeGreaterThan(padrao);
+  });
+});
+
+// O defeito que a captura determinista expos, e que nenhum teste apanhava.
+//
+// O Three partilha programas ja compilados entre materiais cuja chave de
+// programa coincide. A chave por omissao e o texto de `onBeforeCompile`, e dois
+// fechos com o mesmo codigo-fonte dao o mesmo texto. Rampas e patamares usavam a
+// mesma cadeia menos o padrao, eram criados primeiro, e o programa deles — sem
+// padrao e sem escrita de alfa — passava a servir todos os obstaculos.
+//
+// Nenhuma asercao sobre o texto do shader podia apanhar isto: o shader estava
+// certo e nunca chegava a ser compilado. O que fixa a correcao e a chave.
+describe("a chave de programa distingue quem injetou o padrao", () => {
+  const rampa = () => stabilizeLambertHue(attachTopSurface(new MeshLambertMaterial({ color: 0xffffff })));
+  const obstaculo = (id: SurfaceMaterialId = "rock") => {
+    const material = new MeshLambertMaterial({ color: 0xffffff });
+    attachSurfacePattern(material, id);
+    return stabilizeLambertHue(attachTopSurface(material));
+  };
+
+  it("uma rampa e um obstaculo nao partilham programa", () => {
+    expect(obstaculo().customProgramCacheKey()).not.toBe(rampa().customProgramCacheKey());
+  });
+
+  it("duas rampas continuam a partilhar, que e o que se quer", () => {
+    expect(rampa().customProgramCacheKey()).toBe(rampa().customProgramCacheKey());
+  });
+
+  it("a chave do obstaculo declara o padrao", () => {
+    expect(obstaculo().customProgramCacheKey()).toContain("ecos-surface-pattern-v1");
+  });
+
+  it("cada elo da cadeia acrescenta a sua identidade, nenhum apaga a anterior", () => {
+    const chave = obstaculo().customProgramCacheKey();
+    const padrao = chave.indexOf("ecos-surface-pattern-v1");
+    const topo = chave.indexOf("ecos-top-surface-v1");
+    const matiz = chave.indexOf("ecos-stable-lambert-hue-v1");
+    expect(padrao).toBeGreaterThan(-1);
+    expect(topo).toBeGreaterThan(padrao);
+    expect(matiz).toBeGreaterThan(topo);
+  });
+
+  it("nenhum elo substitui a chave anterior por texto de funcao", () => {
+    // Era exatamente esta a origem: `previousCompile.toString()` em vez da chave
+    // anterior. O texto de um fecho e igual para todos os materiais.
+    for (const arquivo of [
+      "src/render/stable-hue-material.ts",
+      "src/render/top-surface-material.ts",
+      "src/render/surface-pattern-material.ts",
+    ]) {
+      const fonte = readFileSync(arquivo, "utf8");
+      expect(fonte).not.toContain("previousCompile.toString()");
+      if (fonte.includes("customProgramCacheKey = ")) {
+        expect(fonte).toContain("material.customProgramCacheKey.bind(material)");
+        expect(fonte).toContain("${previousKey()}");
+      }
+    }
   });
 });
