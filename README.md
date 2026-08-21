@@ -8,17 +8,57 @@
 
 ## FASE ATIVA
 
-**Fase 2 — A Rua Interrompida: implementação técnica concluída. Portões 1 e 2 aguardando teste humano.**
+**Fase 1.3 — governança e documentos.** A camada perceptiva está construída e
+aguarda o Portão 1. O que falta antes da Fase 2 está numerado em passos pequenos,
+cada um com avaliação humana própria: documentos e branches (1.3), integração
+contínua (1.4), corpo e cor das fontes de luz (1.5), variação tonal por estrutura
+(1.6), os chãos (1.7), o Portão 1 (1.8) e o congelamento da camada perceptiva
+(1.9).
 
-O que existe hoje: um percurso de cerca de 120 metros por uma rua de ruínas, em primeira pessoa e ASCII colorido sobre fundo preto. Três trechos de ritmo espacial distinto — praça aberta, corredor comprimido com curva e rampa, bacia que se abre —, duas rotas que convergem, dois marcos e um vestígio silencioso de um acontecimento passado. Alcance visual de 8, 15 ou 25 metros, radar/bússola verde, som espacial de vários emissores e medição separada de simulação e renderização.
+**A Fase 2 do Plano §7 — *Pulso e consequência* — ainda não começou.** Não existem
+Cartas de Intenção, memória causal, NPCs, IA, inventário, Recomeço nem as quatro
+telas. Tudo o que existe é percepção.
 
-O teste do Portão 1 foi **adiado deliberadamente**, a pedido do responsável, e será feito junto com o do Portão 2 num único ciclo. Nenhum agente pode declarar qualquer um dos dois aprovado.
+---
 
-**Eco de Contato** (experiência provisória): o que toca o terreno torna minimamente legível o lugar onde o toca — poucos vestígios interrompidos junto da área real de contato, mais fracos que o próprio objeto. Não é luz: é o terreno que se sombreia, então paredes o ocultam pelo simples teste de profundidade.
+## O que existe hoje
 
-**A luz pertence ao mundo, não ao personagem.** Sem uma fonte próxima, o terreno aos pés é quase inteiramente preto e restam poucos glifos esparsos; junto de uma fonte — hoje o calor que escapa da máquina soterrada sob a ruína — a região alcançada revela terreno e objetos.
+Um percurso de cerca de 120 metros por uma rua de ruínas, em primeira pessoa e
+ASCII colorido sobre fundo preto. Três trechos de ritmo espacial distinto — praça
+aberta, corredor comprimido com curva e rampa, bacia que se abre —, duas rotas que
+convergem, dois marcos e um vestígio silencioso de um acontecimento passado.
+Alcance visual de 8, 15 ou 25 metros, radar/bússola verde, som espacial de vários
+emissores e medição separada de simulação e renderização.
 
-O que **não** existe: Cartas de Intenção, NPCs, memória causal, IA, inventário, Recomeço e as quatro telas. A Fase 2 não começa antes do marco humano (Plano §14): a legibilidade e a identidade visual são avaliadas jogando, não por relatório.
+**A luz pertence ao mundo, não ao personagem.** Sem uma fonte próxima, o terreno
+aos pés é quase inteiramente preto e restam poucos glifos esparsos; junto de uma
+fonte — hoje o calor que escapa da máquina soterrada sob a ruína — a região
+alcançada revela terreno e objetos.
+
+**Legibilidade estrutural.** Silhueta, descontinuidade de profundidade, encontro
+de planos e canto recebem mais densidade de glifo. É representação perceptiva, não
+luz: nada acende, nada inventa matiz, e o reforço não existe além do alcance.
+
+**Matéria por padrão e cor.** Cada família de material — pedra, ruína, monólito —
+tem o seu grão, a sua tabela de glifos e a sua matiz: azul-ardósia, ocre e violeta.
+Chão, rampas e patamares ficam neutros e sem padrão. As famílias separam-se pelo
+ângulo da matiz, nunca por saturação.
+
+**Eco de Contato** (experiência provisória): o que toca o terreno torna
+minimamente legível o lugar onde o toca — um poço junto da base, mais fraco que o
+próprio objeto, com a cor da superfície onde está, o tamanho condicionado à base de
+cada objeto e o contorno dissolvido em grão. Não é luz: é o terreno que se
+sombreia, então paredes o ocultam pelo simples teste de profundidade.
+
+**Densidade da grade.** A célula de glifo é escolha do jogador, com `G`:
+**equilibrada** (6 × 10, o padrão), **nítida** (8 × 14) e **textura** (4 × 7, onde
+os caracteres deixam de se distinguir e a imagem passa a valer como superfície —
+escolhida de propósito, não tolerada). O número de células acompanha os pixels da
+janela, então um ecrã maior recebe mais mundo com a mesma fidelidade.
+
+**Portões 1 e 2 aguardam teste humano.** O teste do Portão 1 foi adiado
+deliberadamente e será feito num único ciclo, sem diagnósticos e com pessoas que
+não conhecem a cena. Nenhum agente pode declarar qualquer um dos dois aprovado.
 
 ---
 
@@ -82,6 +122,7 @@ Requer Node 20 ou superior. Abra o endereço que o `npm run dev` imprimir e cliq
 | `V` | alterna entre os três alcances |
 | `−` `=` | sensibilidade da visada |
 | `F10` | reduz cintilação de luzes e do radar |
+| `G` | densidade da grade: **equilibrada** (padrão), nítida ou textura |
 | `Esc` | libera o ponteiro |
 
 Um texto discreto no canto inferior direito diz qual caminho de visada está ativo. As setas **não** caminham: caminhar é sempre WASD.
@@ -100,6 +141,11 @@ Só existe em `npm run dev`. A construção de produção não contém esse cód
 | `F8` | alterna as três intensidades do Eco de Contato |
 | `F9` | bordas dos setores e planta do percurso registrado |
 | `F11` | exporta o percurso registrado em texto, no console |
+| — | captura determinista: `window.__ecosCapture({ x, z, eyeY, yaw, pitch, seconds })` fixa o ponto de vista e congela o relógio da cena, para que duas execuções produzam o mesmo arquivo |
+| `B` | liga e desliga o reforço estrutural — desligado é a saída visual anterior |
+| `N` | só a máscara estrutural, sem a cena por baixo |
+| `M` | isola a parte do sinal: tudo → silhueta e degrau → vinco e canto |
+| `P` | liga e desliga o padrão de superfície por família de material |
 
 ---
 

@@ -19,7 +19,6 @@
 // desse contato. Nao conhece Three.js nem DOM.
 
 import type { Obstacle, Vec2 } from "./geometry";
-import { obstacleAabb } from "./geometry";
 
 /** Altura da base ate a qual um objeto e considerado apoiado no terreno. */
 export const GROUND_CONTACT_EPSILON = 0.05;
@@ -31,16 +30,12 @@ export type ContactFootprint = {
   id: string;
   /** Centro da area de contato, no plano do terreno. */
   center: Vec2;
-  /** Meia extensao em cada eixo: a area e retangular, nao um circulo igual para todos. */
-  halfExtent: Vec2;
-  /** Deriva da identidade do objeto. Mesma identidade, mesmo padrao, sempre. */
-  seed: number;
-  /**
-   * 1 para contatos pequenos, caindo conforme a area cresce. A renderizacao usa
-   * isto para elevar o limiar do ruido em fundacoes grandes: uma estrutura longa
-   * recebe poucos vestigios espalhados, nunca a area inteira sob ela acesa.
-   */
-  sparsity: number;
+  /** Metade do comprimento da base, sempre no eixo mais longo. */
+  halfLength: number;
+  /** Metade da largura da base, sempre no eixo mais curto. */
+  halfWidth: number;
+  /** Eixo mais longo da base, ja girado para o espaco do mundo. */
+  axis: Vec2;
 };
 
 /** Um objeto suspenso, voando ou sem contato com o terreno nao produz eco. */
@@ -48,34 +43,19 @@ export function isGrounded(obstacle: Obstacle): boolean {
   return obstacle.baseY <= GROUND_CONTACT_EPSILON;
 }
 
-/**
- * Semente estavel a partir da identidade. Nao ha aleatoriedade recalculada: o
- * mesmo objeto produz o mesmo padrao em toda execucao e em todo quadro.
- */
-export function seedFromId(id: string): number {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < id.length; i += 1) {
-    hash ^= id.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  // Reduzido a uma faixa pequena para nao perder precisao no shader.
-  return (hash % 4096) / 4096;
-}
-
 export function contactFootprint(obstacle: Obstacle): ContactFootprint {
-  const box = obstacleAabb(obstacle);
-  const halfExtent = {
-    x: (box.maxX - box.minX) / 2,
-    z: (box.maxZ - box.minZ) / 2,
-  };
-  const area = 4 * halfExtent.x * halfExtent.z;
+  const longAxisIsX = obstacle.size.x >= obstacle.size.z;
+  const cosine = Math.cos(obstacle.yaw);
+  const sine = Math.sin(obstacle.yaw);
 
   return {
     id: obstacle.id,
     center: { x: obstacle.center.x, z: obstacle.center.z },
-    halfExtent,
-    seed: seedFromId(obstacle.id),
-    sparsity: Math.max(0.28, Math.min(1, 3.2 / (3.2 + area))),
+    halfLength: Math.max(obstacle.size.x, obstacle.size.z) / 2,
+    halfWidth: Math.min(obstacle.size.x, obstacle.size.z) / 2,
+    axis: longAxisIsX
+      ? { x: cosine, z: -sine }
+      : { x: sine, z: cosine },
   };
 }
 
@@ -107,6 +87,52 @@ export function nearestContacts(
     return da === db ? a.id.localeCompare(b.id) : da - db;
   });
   return grounded.slice(0, max);
+}
+
+/**
+ * Alcance do eco para alem da base que o origina, em metros.
+ *
+ * O miolo da capsula ja acompanhava a base real do objeto; o que nao acompanhava
+ * era este alcance, que era uma constante unica — a mesma para uma pedra de 0,9 m
+ * e para um muro de 9 m. Dai um eco cujo tamanho nao tinha relacao com a coisa
+ * que o produz.
+ *
+ * A lei e por eixo, e nao por um raio medio: um muro longo e fino tem de
+ * continuar a ler-se como muro, em vez de ganhar um halo lateral tao largo
+ * quanto e comprido. O alongamento do eco passa a vir da forma do objeto.
+ *
+ * Os fatores estao calibrados no objeto mediano da cena (meia-base 1,41 x 0,45),
+ * que assim conserva os valores anteriores — 1,80 e 0,70 —, para que o eco ja
+ * aprovado nao mude onde ja estava certo. Os limites existem porque a cena tem
+ * bases numa razao de 5,5x entre a menor e a maior.
+ */
+export const ECHO_REACH = {
+  fatorComprimento: 1.3,
+  minimoComprimento: 0.6,
+  maximoComprimento: 3.2,
+  fatorLargura: 1.55,
+  minimoLargura: 0.35,
+  maximoLargura: 1.6,
+} as const;
+
+export type ContactReach = {
+  /** Alcance no eixo mais longo da base. */
+  length: number;
+  /** Alcance no eixo mais curto da base. */
+  width: number;
+};
+
+/** Alcance do eco de um contato, condicionado ao tamanho daquele contato. */
+export function contactReach(footprint: ContactFootprint): ContactReach {
+  const R = ECHO_REACH;
+  return {
+    length: clamp(R.fatorComprimento * footprint.halfLength, R.minimoComprimento, R.maximoComprimento),
+    width: clamp(R.fatorLargura * footprint.halfWidth, R.minimoLargura, R.maximoLargura),
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 /** Intensidades comparaveis para avaliacao humana. O padrao e experimental. */

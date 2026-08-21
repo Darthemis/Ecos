@@ -1,29 +1,45 @@
 // Montagem do laço. Une entrada, simulação, percepção, renderização, áudio e
 // diagnóstico sem que nenhum deles conheça o outro diretamente.
 
-import { NearestFilter, WebGLRenderer, WebGLRenderTarget } from "three";
+import {
+  DepthFormat,
+  DepthTexture,
+  HalfFloatType,
+  NearestFilter,
+  UnsignedIntType,
+  WebGLRenderer,
+  WebGLRenderTarget,
+} from "three";
 import { planSteps, TICK_SECONDS } from "../core/fixed-step";
 import { createInputSource } from "../core/input";
 import { DEFAULT_COMFORT } from "../core/settings";
 import { createAmbience } from "../audio/ambience";
 import { ACTIVE_SCENE } from "../content/active-scene";
 import { createDiagnosticsOverlay, DIAGNOSTICS_ENABLED } from "../diagnostics/overlay";
+import { parseCapturePose, type CapturePose } from "../diagnostics/deterministic-capture";
+import {
+  DEFAULT_GLYPH_DENSITY,
+  glyphDensityAt,
+  glyphPixels,
+  nextGlyphDensity,
+} from "../render/glyph-density";
+import {
+  applyDiagnosticCommand,
+  INITIAL_DIAGNOSTIC_STATE,
+  type DiagnosticState,
+} from "./diagnostic-commands";
 import { Metrics } from "../diagnostics/metrics";
 import { createRouteLog } from "../diagnostics/route-log";
 import { createRouteCanvas } from "../diagnostics/route-canvas";
 import { createAsciiPass } from "../render/ascii-pass";
+import { createStructurePass } from "../render/structure-pass";
 import { createSceneView } from "../render/scene-view";
-import { GLYPH_CELL_HEIGHT, GLYPH_CELL_WIDTH } from "../render/glyph-atlas";
+import { computeGrid } from "../render/grid";
 import { createRadar } from "../render/radar";
 import { advance, createWorldState } from "../sim/world-sim";
 import { PLAYER_EYE_HEIGHT } from "../sim/state";
 import { segmentAt } from "../world/scene";
-import {
-  DEFAULT_ECHO_LEVEL,
-  ECHO_LEVELS,
-  nextEchoLevel,
-  type EchoLevel,
-} from "../world/contact-echo";
+import { ECHO_LEVELS } from "../world/contact-echo";
 import {
   DEFAULT_VISUAL_RANGE,
   nextVisualRange,
@@ -61,6 +77,7 @@ export function startGame(root: HTMLElement): Game {
 
   const view = createSceneView(ACTIVE_SCENE);
   const ascii = createAsciiPass();
+  const structure = createStructurePass();
   const audio = createAmbience(ACTIVE_SCENE);
   const metrics = new Metrics();
   const routeLog = createRouteLog(ACTIVE_SCENE);
@@ -71,16 +88,37 @@ export function startGame(root: HTMLElement): Game {
   const routeCanvas = DIAGNOSTICS_ENABLED ? createRouteCanvas(ACTIVE_SCENE) : null;
   if (routeCanvas !== null) root.appendChild(routeCanvas.canvas);
 
-  let target = new WebGLRenderTarget(2, 2, { minFilter: NearestFilter, magFilter: NearestFilter });
+  // A profundidade da mesma grade alimenta o reforco estrutural do passe ASCII.
+  // Inteiro sem sinal: com corte de camera em 220 m, 16 bits nao separariam
+  // celulas vizinhas de uma parede proxima.
+  const criarAlvo = (w: number, h: number) => {
+    const depthTexture = new DepthTexture(w, h, UnsignedIntType);
+    depthTexture.format = DepthFormat;
+    depthTexture.minFilter = NearestFilter;
+    depthTexture.magFilter = NearestFilter;
+    // Meia precisao, e nao 8 bits. O alvo guarda luz **linear**, e este mundo
+    // vive quase inteiramente abaixo de 1/255 — onde 8 bits colapsam tudo para
+    // zero exato. Era a raiz de varios problemas perceptivos ao mesmo tempo:
+    // celulas estruturais detectadas mas invisiveis, e qualquer nuance de cor
+    // desaparecida antes de chegar ao passe ASCII.
+    //
+    // A filtragem continua por vizinho mais proximo, entao nao e preciso a
+    // extensao de filtragem linear em meia precisao: um texel e uma celula, e
+    // interpolar seria errado de qualquer forma.
+    const alvo = new WebGLRenderTarget(w, h, {
+      minFilter: NearestFilter,
+      magFilter: NearestFilter,
+      type: HalfFloatType,
+    });
+    alvo.depthTexture = depthTexture;
+    return alvo;
+  };
+
+  let target = criarAlvo(2, 2);
   let columns = 2;
   let rows = 2;
   let visualRange: VisualRange = DEFAULT_VISUAL_RANGE;
-  let showRawScene = false;
-  let uniformProbe = false;
-  let worldLights = true;
-  let echoOn = true;
-  let echoLevel: EchoLevel = DEFAULT_ECHO_LEVEL;
-  let sectorDebug = false;
+  let diag: DiagnosticState = INITIAL_DIAGNOSTIC_STATE;
   let flickerReduced = DEFAULT_COMFORT.flickerReduced;
   let state = createWorldState();
   let accumulator = 0;
@@ -88,12 +126,35 @@ export function startGame(root: HTMLElement): Game {
   let elapsed = 0;
   let running = true;
   let labelTimer = 0;
+  // Pose de captura. Nula no jogo; nao nula so quando uma ferramenta de medicao
+  // a define. Ver src/diagnostics/deterministic-capture.ts.
+  let capture: CapturePose | null = null;
+  // Densidade da grade. Conforto, e nao diagnostico: troca detalhe por
+  // legibilidade do caractere no ecra de quem joga, como a reducao de
+  // cintilacao e a sensibilidade da visada. Por isso existe tambem na
+  // construcao de producao.
+  let glyphDensity = DEFAULT_GLYPH_DENSITY;
 
-  view.setEchoLevel(echoLevel);
+  // Aplica o estado inteiro, campo a campo. Nenhum campo pode ficar sem efeito
+  // por esquecimento: foi assim que `F5` deixou de funcionar na Fase 2.
+  const syncDiagnostics = () => {
+    view.setWorldLightsEnabled(diag.worldLights);
+    view.setEchoEnabled(diag.echo);
+    view.setEchoLevel(diag.echoLevel);
+    view.setSectorDebug(diag.sectorDebug);
+    routeCanvas?.setVisible(diag.sectorDebug);
+    ascii.setStructureEnabled(diag.structure);
+    ascii.setStructureMask(diag.structureMask);
+    ascii.setStructureSource(diag.structureSource);
+    view.setPatternEnabled(diag.surfacePattern);
+  };
+  syncDiagnostics();
 
   const applyVisualRange = (meters: VisualRange) => {
     visualRange = meters;
     view.setVisualRange(meters);
+    const planos = view.planes();
+    structure.setDepthRange(planos.near, planos.far, planos.fogNear, planos.fogFar);
     rangeLabel.textContent = `${meters} m`;
     labelTimer = 2.2;
   };
@@ -105,26 +166,22 @@ export function startGame(root: HTMLElement): Game {
     // tela. Por isso o quadro é reduzido até o múltiplo exato e centralizado; a
     // sobra fica preta, que já é parte do mundo.
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-    const cellWidth = Math.max(4, Math.round(GLYPH_CELL_WIDTH * dpr));
-    const cellHeight = Math.max(6, Math.round(GLYPH_CELL_HEIGHT * dpr));
-
-    const availableWidth = Math.max(320, Math.floor(root.clientWidth * dpr));
-    const availableHeight = Math.max(240, Math.floor(root.clientHeight * dpr));
-
-    columns = Math.max(2, Math.floor(availableWidth / cellWidth));
-    rows = Math.max(2, Math.floor(availableHeight / cellHeight));
-
-    const bufferWidth = columns * cellWidth;
-    const bufferHeight = rows * cellHeight;
+    const celula = glyphDensityAt(glyphDensity);
+    const grade = computeGrid(root.clientWidth, root.clientHeight, dpr, celula.width, celula.height);
+    const { cellWidth, cellHeight, bufferWidth, bufferHeight } = grade;
+    columns = grade.columns;
+    rows = grade.rows;
 
     renderer.setPixelRatio(1);
     renderer.setSize(bufferWidth, bufferHeight, false);
     canvas.style.width = `${bufferWidth / dpr}px`;
     canvas.style.height = `${bufferHeight / dpr}px`;
 
+    target.depthTexture?.dispose();
     target.dispose();
-    target = new WebGLRenderTarget(columns, rows, { minFilter: NearestFilter, magFilter: NearestFilter });
+    target = criarAlvo(columns, rows);
     ascii.setGrid(columns, rows, cellWidth, cellHeight);
+    structure.setGrid(columns, rows);
 
     view.camera.aspect = bufferWidth / bufferHeight;
     view.camera.updateProjectionMatrix();
@@ -151,6 +208,15 @@ export function startGame(root: HTMLElement): Game {
       case "cycleRange":
         applyVisualRange(nextVisualRange(visualRange));
         break;
+      case "cycleGlyphDensity":
+        // Conforto, como a reducao de cintilacao. Nao e um interruptor na cena:
+        // muda o tamanho da grade, e por isso refaz o alvo, o atlas e o passe —
+        // pelo mesmo caminho que um redimensionamento de janela.
+        glyphDensity = nextGlyphDensity(glyphDensity);
+        resize();
+        labelTimer = 2.2;
+        rangeLabel.textContent = `grade ${glyphDensityAt(glyphDensity).rotulo} · ${glyphDensityAt(glyphDensity).width}x${glyphDensityAt(glyphDensity).height}`;
+        break;
       case "toggleFlickerReduction":
         // Conforto: vale no jogo normal, não é diagnóstico.
         flickerReduced = !flickerReduced;
@@ -160,42 +226,21 @@ export function startGame(root: HTMLElement): Game {
       case "toggleDiagnostics":
         if (diagnostics !== null) diagnostics.setVisible(diagnostics.element.hidden);
         break;
-      case "toggleEcho":
-        if (DIAGNOSTICS_ENABLED) {
-          echoOn = !echoOn;
-          view.setEchoEnabled(echoOn);
-        }
-        break;
-      case "cycleEchoLevel":
-        if (DIAGNOSTICS_ENABLED) {
-          echoLevel = nextEchoLevel(echoLevel);
-          view.setEchoLevel(echoLevel);
-        }
-        break;
-      case "toggleSectorDebug":
-        if (DIAGNOSTICS_ENABLED) {
-          sectorDebug = !sectorDebug;
-          view.setSectorDebug(sectorDebug);
-          routeCanvas?.setVisible(sectorDebug);
-        }
-        break;
       case "exportRoute":
         // Exportação local: nada sai da máquina.
         if (DIAGNOSTICS_ENABLED) console.info(routeLog.toText());
-        break;
-      case "toggleUniformProbe":
-        if (DIAGNOSTICS_ENABLED) uniformProbe = !uniformProbe;
-        break;
-      case "toggleRawScene":
-        // Modo 3D convencional: diagnóstico apenas. Ausente da construção de
-        // produção, portanto nunca alcançável pelo jogador.
-        if (DIAGNOSTICS_ENABLED) showRawScene = !showRawScene;
         break;
       case "sensitivityDown":
       case "sensitivityUp":
         rangeLabel.textContent = `sensibilidade ${input.sensitivity().toFixed(1)}`;
         labelTimer = 1.6;
         break;
+    }
+
+    const proximo = applyDiagnosticCommand(diag, command, DIAGNOSTICS_ENABLED);
+    if (proximo !== diag) {
+      diag = proximo;
+      syncDiagnostics();
     }
   });
 
@@ -224,34 +269,42 @@ export function startGame(root: HTMLElement): Game {
     // O registro recebe uma cópia e não devolve nada à simulação.
     routeLog.sample(elapsed, { x: state.player.position.x, z: state.player.position.z });
 
-    view.camera.position.set(
-      state.player.position.x,
-      state.player.groundY + PLAYER_EYE_HEIGHT,
-      state.player.position.z,
-    );
-    view.camera.rotation.set(state.player.pitch, state.player.yaw, 0, "YXZ");
+    // Ponto de vista e instante da cena. Com uma pose de captura ativa os dois
+    // ficam fixos, e o quadro deixa de depender do relogio de parede — que e o
+    // que torna duas execucoes comparaveis. A simulacao continua intocada.
+    const olhoX = capture?.x ?? state.player.position.x;
+    const olhoZ = capture?.z ?? state.player.position.z;
+    const olhoY = capture?.eyeY ?? state.player.groundY + PLAYER_EYE_HEIGHT;
+    const olhoYaw = capture?.yaw ?? state.player.yaw;
+    const olhoPitch = capture?.pitch ?? state.player.pitch;
+    const tempo = capture?.seconds ?? elapsed;
 
-    const sectors = view.update(elapsed, state.player.position);
+    view.camera.position.set(olhoX, olhoY, olhoZ);
+    view.camera.rotation.set(olhoPitch, olhoYaw, 0, "YXZ");
+
+    const sectors = view.update(tempo, { x: olhoX, z: olhoZ });
 
     const renderStart = performance.now();
-    if (uniformProbe) {
+    if (diag.uniformProbe) {
       renderer.setRenderTarget(target);
       renderer.setClearColor(0x6a6a6a, 1);
       renderer.clear(true, true, false);
       renderer.setClearColor(0x000000, 1);
-      ascii.render(renderer, target);
-    } else if (showRawScene) {
+      structure.render(renderer, target.depthTexture!);
+      ascii.render(renderer, target, structure.texture());
+    } else if (diag.rawScene) {
       renderer.setRenderTarget(null);
       renderer.render(view.scene, view.camera);
     } else {
       renderer.setRenderTarget(target);
       renderer.render(view.scene, view.camera);
-      ascii.render(renderer, target);
+      structure.render(renderer, target.depthTexture!);
+      ascii.render(renderer, target, structure.texture());
     }
     metrics.recordRender(performance.now() - renderStart);
 
     const contact = radarContact(state);
-    radar.draw(state.player.yaw, contact, elapsed);
+    radar.draw(olhoYaw, contact, tempo);
     audio.update(state.player.position, state.player.yaw, state.presence.position);
     routeCanvas?.draw(routeLog.samples(), state.player.position);
 
@@ -266,16 +319,20 @@ export function startGame(root: HTMLElement): Game {
       const summary = routeLog.summary();
       diagnostics.update(metrics.snapshot(), {
         cena: `${ACTIVE_SCENE.id} v${ACTIVE_SCENE.version} seed ${ACTIVE_SCENE.seed}`,
-        grade: `${columns} x ${rows}`,
+        grade: `${columns} x ${rows} · celula ${glyphDensityAt(glyphDensity).width}x${glyphDensityAt(glyphDensity).height} (${glyphDensityAt(glyphDensity).rotulo}) · ${glyphPixels(glyphDensity)} px por glifo`,
         alcance: `${visualRange} m`,
         posicao: `${state.player.position.x.toFixed(1)}, ${state.player.position.z.toFixed(1)} · y ${state.player.groundY.toFixed(2)}`,
         trecho: segmentAt(ACTIVE_SCENE, state.player.position) ?? "fora",
         setores: `${sectors.active}/${sectors.total} · objetos ${sectors.objectsActive}/${sectors.objectsTotal}`,
         percurso: `${summary.distance.toFixed(0)} m · ${summary.seconds.toFixed(0)} s · hesitacoes ${summary.hesitations} · retornos ${summary.returns}`,
-        luzes: worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
-        eco: echoOn ? `${echoLevel} (${ECHO_LEVELS[echoLevel]})` : "desligado",
+        luzes: diag.worldLights ? "fontes do mundo ligadas" : "sem fonte proxima",
+        eco: diag.echo ? `${diag.echoLevel} (${ECHO_LEVELS[diag.echoLevel]})` : "desligado",
+        estrutura: diag.structure
+          ? `ligada · ${diag.structureSource}${diag.structureMask ? " · MASCARA" : ""}`
+          : "desligada (base Fase 2)",
+        superficie: diag.surfacePattern ? "padrao por tipo ligado" : "padrao desligado",
         conforto: `sensibilidade ${input.sensitivity().toFixed(1)} · cintilacao ${flickerReduced ? "reduzida" : "normal"}`,
-        modo: uniformProbe ? "ENTRADA UNIFORME" : showRawScene ? "3D CONVENCIONAL" : "ascii",
+        modo: diag.uniformProbe ? "ENTRADA UNIFORME" : diag.rawScene ? "3D CONVENCIONAL" : "ascii",
         audio: audio.isRunning() ? `ativo · ${audio.emitterCount()} emissores` : "aguardando gesto",
       });
     }
@@ -283,15 +340,36 @@ export function startGame(root: HTMLElement): Game {
     requestAnimationFrame(frame);
   };
 
+  // Superficie de medicao, so em desenvolvimento. A construcao de producao nao
+  // contem este bloco, entao o jogador nunca a alcanca — a mesma regra dos
+  // outros diagnosticos.
+  if (DIAGNOSTICS_ENABLED) {
+    (window as unknown as Record<string, unknown>).__ecosCapture = (pose: unknown) => {
+      if (pose === null) {
+        capture = null;
+        return true;
+      }
+      const analisada = parseCapturePose(pose);
+      if (analisada === null) return false;
+      capture = analisada;
+      return true;
+    };
+  }
+
   requestAnimationFrame(frame);
 
   return {
     stop() {
       running = false;
+      capture = null;
+      if (DIAGNOSTICS_ENABLED) {
+        delete (window as unknown as Record<string, unknown>).__ecosCapture;
+      }
       window.removeEventListener("resize", resize);
       input.dispose();
       audio.dispose();
       ascii.dispose();
+      structure.dispose();
       view.dispose();
       target.dispose();
       renderer.dispose();

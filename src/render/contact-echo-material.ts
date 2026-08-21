@@ -7,16 +7,42 @@
 // atraves de paredes ou relevos.
 
 import type { MeshLambertMaterial, WebGLProgramParametersWithUniforms } from "three";
-import { Vector2, Vector3, Vector4 } from "three";
-import { MAX_CONTACTS, type ContactFootprint } from "../world/contact-echo";
+import { Vector2, Vector4 } from "three";
+import { contactReach, MAX_CONTACTS, type ContactFootprint } from "../world/contact-echo";
 
-/** Alcance do eco a partir da borda da area de contato, em metros. */
-const ECHO_REACH = 1.15;
+/**
+ * Largura da borda suave, em metros. Fica constante de proposito: o alcance do
+ * eco passou a depender do tamanho do contato, mas a suavidade da borda e uma
+ * constante perceptiva, nao uma proporcao do objeto.
+ */
+const ECHO_FADE = 0.65;
 
-/** Celulas de ruido por metro. Define o tamanho dos retalhos. */
-const NOISE_SCALE = 1.7;
+/**
+ * Grao do contorno, em metros. Desloca a distancia, nunca a intensidade.
+ *
+ * Substitui a ondulacao de borda de 0,12 m, que atuava numa faixa estreita
+ * demais para disfarcar a curva por baixo. Baixar este numero devolve o eco a um
+ * limite mais definido; zero devolve o contorno limpo da caixa arredondada.
+ */
+const ECHO_GRAIN = 0.45;
 
-const ECHO_COLOR = new Vector3(0.62, 0.66, 0.78);
+/** Raio maximo de canto, em metros. Prende o arredondamento em bases grandes. */
+const ECHO_CORNER_MAX = 0.9;
+
+/** Celulas de ruido por metro. Define o tamanho das ondulacoes da borda. */
+const ECHO_NOISE_SCALE = 1.2;
+
+/**
+ * Luminancia do eco. Herdada da cor original (0.62, 0.66, 0.78) pelos pesos
+ * Rec. 709, e conservada desde entao por duas mudancas de matiz: primeiro para
+ * cinza neutro, agora para o matiz da propria superficie.
+ *
+ * E ela, e nao a cor, que carrega a calibracao. Como o eco entra somando luz
+ * linear e a luminancia e um funcional linear, fixar este numero preserva a
+ * luminancia de cada pixel: muda o matiz, nunca a quantidade de luz. As tres
+ * intensidades aprovadas continuam a valer o que valiam.
+ */
+const ECHO_LUMINANCE = 0.2126 * 0.62 + 0.7152 * 0.66 + 0.0722 * 0.78;
 
 export type ContactEchoUniforms = {
   setFootprints: (footprints: readonly ContactFootprint[]) => void;
@@ -34,20 +60,20 @@ const FRAGMENT_HOOK = "#include <emissivemap_fragment>";
 // Declaradas fora de main: o ponto de injecao do termo fica dentro dela.
 const FRAGMENT_HELPERS = /* glsl */ `
 // Ruido de valor ancorado no espaco do mundo. Sem termo de tempo e sem
-// dependencia da tela: ao caminhar ou girar, o vestigio continua pertencendo ao
-// mesmo lugar do terreno.
-float ecoHash( vec2 cell, float seed ) {
-  return fract( sin( dot( cell, vec2( 127.1, 311.7 ) ) + seed * 53.7 ) * 43758.5453 );
+// dependencia da tela: ao caminhar ou girar, a ondulacao continua pertencendo
+// ao mesmo lugar do terreno.
+float ecoHash( vec2 cell ) {
+  return fract( sin( dot( cell, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
 }
 
-float ecoNoise( vec2 p, float seed ) {
+float ecoNoise( vec2 p ) {
   vec2 cell = floor( p );
   vec2 f = fract( p );
   f = f * f * ( 3.0 - 2.0 * f );
-  float a = ecoHash( cell, seed );
-  float b = ecoHash( cell + vec2( 1.0, 0.0 ), seed );
-  float c = ecoHash( cell + vec2( 0.0, 1.0 ), seed );
-  float d = ecoHash( cell + vec2( 1.0, 1.0 ), seed );
+  float a = ecoHash( cell );
+  float b = ecoHash( cell + vec2( 1.0, 0.0 ) );
+  float c = ecoHash( cell + vec2( 0.0, 1.0 ) );
+  float d = ecoHash( cell + vec2( 1.0, 1.0 ) );
   return mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y );
 }
 `;
@@ -61,30 +87,56 @@ for ( int i = 0; i < ECHO_MAX_CONTACTS; i ++ ) {
   if ( i >= uEchoCount ) break;
 
   vec4 area = uEchoAreas[ i ];
-  vec2 meta = uEchoMeta[ i ];
+  vec2 axis = uEchoAxes[ i ];
+  vec2 reach = uEchoReach[ i ];
+  vec2 side = vec2( -axis.y, axis.x );
+  vec2 delta = vEchoWorld.xz - area.xy;
+  vec2 local = vec2( dot( delta, axis ), dot( delta, side ) );
 
-  // Distancia ate a borda do retangulo de contato, nao ate o centro: a forma e o
-  // tamanho da area entram no resultado e nenhum objeto recebe um circulo igual.
-  vec2 d = abs( vEchoWorld.xz - area.xy ) - area.zw;
-  float edge = length( max( d, 0.0 ) ) + min( max( d.x, d.y ), 0.0 );
+  // Caixa arredondada, e nao capsula. A capsula punha o alcance so no eixo
+  // comprido e fechava as pontas com um arco circular exato: uma forma esticada
+  // para um lado, com uma curvatura que a vista reconhece de imediato. A caixa
+  // segue o retangulo da base nos dois eixos, e o raio de canto e pequeno face a
+  // ela — o eco fica com a forma do objeto, nao com uma forma propria.
+  vec2 meia = vec2( area.z + reach.x, area.w + reach.y );
+  float raio = min( min( meia.x, meia.y ) * 0.45, uEchoCornerMax );
+  vec2 q = abs( local ) - meia + raio;
+  float dist = length( max( q, vec2( 0.0 ) ) ) + min( max( q.x, q.y ), 0.0 ) - raio;
 
-  float fall = 1.0 - clamp( edge / uEchoReach, 0.0, 1.0 );
-  fall = fall * fall * fall;
+  // Grao. A referencia nao tem contorno: tem densidade que rareia com a
+  // distancia. Duas oitavas desfazem o limite em vez de o ondular, e a amplitude
+  // sobe de zero dentro da base ate ao maximo na borda — o nucleo junto ao
+  // objeto continua solido, e o que se dissolve e o fim.
+  //
+  // Continua a deslocar a distancia, nunca a intensidade: a lei de queda e a
+  // mesma, o que muda e onde ela cruza o limiar.
+  //
+  // smoothstep com edge0 > edge1 e indefinido em GLSL: a queda vai por
+  // 1.0 - smoothstep, que e bem definido em qualquer implementacao.
+  float fora = smoothstep( -uEchoFade * 2.0, uEchoFade, dist );
+  float grao = ecoNoise( vEchoWorld.xz * uEchoNoiseScale ) * 0.6
+             + ecoNoise( vEchoWorld.xz * uEchoNoiseScale * 2.7 ) * 0.4;
+  dist += uEchoGrain * fora * ( grao - 0.5 );
 
-  // O limiar sobe com o tamanho da fundacao: estruturas grandes recebem poucos
-  // vestigios ao longo dela, em vez da area inteira abaixo.
-  float sparsity = meta.y;
-  float threshold = 0.38 + ( 1.0 - sparsity ) * 0.34;
+  float fall = 1.0 - smoothstep( -uEchoFade, uEchoFade, dist );
 
-  float n = ecoNoise( vEchoWorld.xz * uEchoNoiseScale, meta.x );
-  float broken = smoothstep( threshold, threshold + 0.22, n );
-
-  // max, nunca soma: por mais objetos que se aproximem, o chao nao vira uma
-  // superficie continua.
-  eco = max( eco, fall * broken );
+  // max, nunca soma: contatos sobrepostos nao aumentam a intensidade.
+  eco = max( eco, fall );
 }
 
-totalEmissiveRadiance += uEchoColor * eco * uEchoStrength;
+// O eco nao tem cor propria: toma a da superficie onde esta. E o que a regra
+// deste modulo sempre disse — nao e luz, e o terreno que se sombreia — e o que
+// o piso dos topos ja fazia. Quando o chao tiver familias, o eco segue sozinho.
+//
+// A matiz e normalizada pelo pico e depois reposta na luminancia calibrada, para
+// que so o matiz mude: as tres intensidades aprovadas continuam a valer o que
+// valiam.
+float ecoPico = max( diffuseColor.r, max( diffuseColor.g, diffuseColor.b ) );
+vec3 ecoMatiz = ecoPico > 0.000001 ? diffuseColor.rgb / ecoPico : vec3( 0.0 );
+float ecoMatizLum = dot( ecoMatiz, vec3( 0.2126, 0.7152, 0.0722 ) );
+vec3 ecoCor = ecoMatiz * ( uEchoLuminance / max( ecoMatizLum, 0.000001 ) );
+
+totalEmissiveRadiance += ecoCor * eco * uEchoStrength;
 `;
 
 /**
@@ -94,16 +146,21 @@ totalEmissiveRadiance += uEchoColor * eco * uEchoStrength;
  */
 export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUniforms {
   const areas = Array.from({ length: MAX_CONTACTS }, () => new Vector4(0, 0, 0, 0));
-  const meta = Array.from({ length: MAX_CONTACTS }, () => new Vector2(0, 1));
+  const axes = Array.from({ length: MAX_CONTACTS }, () => new Vector2(1, 0));
+  // Alcance por contato: o tamanho do eco passa a depender do objeto que o gera.
+  const reaches = Array.from({ length: MAX_CONTACTS }, () => new Vector2(0, 0));
 
   const uniforms = {
     uEchoCount: { value: 0 },
     uEchoAreas: { value: areas },
-    uEchoMeta: { value: meta },
+    uEchoAxes: { value: axes },
     uEchoStrength: { value: 0 },
-    uEchoReach: { value: ECHO_REACH },
-    uEchoNoiseScale: { value: NOISE_SCALE },
-    uEchoColor: { value: ECHO_COLOR },
+    uEchoReach: { value: reaches },
+    uEchoFade: { value: ECHO_FADE },
+    uEchoGrain: { value: ECHO_GRAIN },
+    uEchoCornerMax: { value: ECHO_CORNER_MAX },
+    uEchoNoiseScale: { value: ECHO_NOISE_SCALE },
+    uEchoLuminance: { value: ECHO_LUMINANCE },
   };
 
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
@@ -119,17 +176,26 @@ export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUni
       "varying vec3 vEchoWorld;",
       "uniform int uEchoCount;",
       `uniform vec4 uEchoAreas[${MAX_CONTACTS}];`,
-      `uniform vec2 uEchoMeta[${MAX_CONTACTS}];`,
+      `uniform vec2 uEchoAxes[${MAX_CONTACTS}];`,
       "uniform float uEchoStrength;",
-      "uniform float uEchoReach;",
+      `uniform vec2 uEchoReach[${MAX_CONTACTS}];`,
+      "uniform float uEchoFade;",
+      "uniform float uEchoGrain;",
+      "uniform float uEchoCornerMax;",
       "uniform float uEchoNoiseScale;",
-      "uniform vec3 uEchoColor;",
+      "uniform float uEchoLuminance;",
       FRAGMENT_HELPERS,
       shader.fragmentShader,
     ]
       .join("\n")
       .replace(FRAGMENT_HOOK, FRAGMENT_INJECTION);
   };
+
+  // Identidade propria na chave de programa, pelo mesmo motivo da Fase 1.1.1:
+  // o Three partilha programas entre materiais cuja chave coincide, e o texto de
+  // um fecho nao distingue quem injetou o que.
+  const previousKey = material.customProgramCacheKey.bind(material);
+  material.customProgramCacheKey = () => `${previousKey()}|ecos-contact-echo-v1`;
 
   // O material precisa de emissao para que totalEmissiveRadiance seja usado.
   material.emissive.setRGB(0, 0, 0);
@@ -140,8 +206,10 @@ export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUni
       const count = Math.min(footprints.length, MAX_CONTACTS);
       for (let i = 0; i < count; i += 1) {
         const print = footprints[i]!;
-        areas[i]!.set(print.center.x, print.center.z, print.halfExtent.x, print.halfExtent.z);
-        meta[i]!.set(print.seed, print.sparsity);
+        areas[i]!.set(print.center.x, print.center.z, print.halfLength, print.halfWidth);
+        axes[i]!.set(print.axis.x, print.axis.z);
+        const reach = contactReach(print);
+        reaches[i]!.set(reach.length, reach.width);
       }
       uniforms.uEchoCount.value = count;
     },

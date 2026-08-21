@@ -23,7 +23,27 @@ const LOOK_SENSITIVITY = 0.0022;
 const KEY_YAW_RATE = 1.05;
 const KEY_PITCH_RATE = 0.62;
 
-export type InputCommand = "cycleRange" | "range8" | "range15" | "range25" | "toggleDiagnostics" | "toggleRawScene" | "toggleUniformProbe" | "toggleWorldLights" | "toggleEcho" | "cycleEchoLevel" | "toggleSectorDebug" | "toggleFlickerReduction" | "exportRoute" | "sensitivityDown" | "sensitivityUp";
+export type InputCommand =
+  | "cycleRange"
+  | "range8"
+  | "range15"
+  | "range25"
+  | "toggleDiagnostics"
+  | "toggleRawScene"
+  | "toggleUniformProbe"
+  | "toggleWorldLights"
+  | "toggleEcho"
+  | "cycleEchoLevel"
+  | "toggleSectorDebug"
+  | "toggleFlickerReduction"
+  | "exportRoute"
+  | "sensitivityDown"
+  | "sensitivityUp"
+  | "toggleStructure"
+  | "toggleStructureMask"
+  | "cycleStructureSource"
+  | "toggleSurfacePattern"
+  | "cycleGlyphDensity";
 
 /** Como o jogador olhou por ultimo. Serve a indicacao na tela. */
 export type LookMode = "pointerLock" | "drag" | "keys" | "idle";
@@ -42,7 +62,8 @@ export type InputSource = {
   dispose: () => void;
 };
 
-const COMMAND_KEYS: Record<string, InputCommand> = {
+/** Exportado para que o teste prove que toda tecla mapeada tem efeito. */
+export const COMMAND_KEYS: Record<string, InputCommand> = {
   Digit1: "range8",
   Digit2: "range15",
   Digit3: "range25",
@@ -58,6 +79,13 @@ const COMMAND_KEYS: Record<string, InputCommand> = {
   F11: "exportRoute",
   Minus: "sensitivityDown",
   Equal: "sensitivityUp",
+  // Fase 1.1. Longe de WASD de proposito: sao diagnosticos, nao movimento.
+  KeyB: "toggleStructure",
+  KeyN: "toggleStructureMask",
+  KeyM: "cycleStructureSource",
+  KeyP: "toggleSurfacePattern",
+  // Fase 1.2: escada de densidade da grade, para escolher a olho e no lugar.
+  KeyG: "cycleGlyphDensity",
 };
 
 const TURN_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);

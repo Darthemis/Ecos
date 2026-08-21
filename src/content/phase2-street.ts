@@ -263,10 +263,10 @@ export const PHASE2_STREET: SceneDefinition = {
       position: { x: -11.2, z: -86.2 },
       beaconBase: 0.25,
       beaconHeight: 3.4,
-      beaconColor: 0xff7326,
+      beaconColor: 0xffffff,
       beaconHalfWidth: 0.26,
       segment: "revelacao",
-      role: "vestigio; o brilho ambar aparece ao longe pela alameda antes de ser compreendido",
+      role: "vestigio; o traco distante aparece pela alameda antes de ser compreendido",
     },
   ],
 
@@ -349,3 +349,4 @@ export const PRESENCE_PATH = [
 ] as const;
 
 export const PRESENCE_SPEED = 1.15;
+

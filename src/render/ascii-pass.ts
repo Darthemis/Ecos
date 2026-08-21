@@ -1,5 +1,11 @@
 // Converte a cena renderizada em baixa resolucao para glifos coloridos sobre
 // preto. Um quad de tela inteira e um shader; um texel da cena e uma celula.
+//
+// Desde a Fase 1.1 o passe le tambem o mapa estrutural — silhueta, degrau,
+// encontro de planos e canto —, calculado a parte na resolucao da grade. Ele
+// apenas aumenta a densidade do glifo. A cor continua sendo a do objeto: o
+// reforco nao acende nada, nao inventa matiz e nao existe fora do alcance
+// perceptivo.
 
 import {
   Mesh,
@@ -13,6 +19,7 @@ import {
   type WebGLRenderTarget,
 } from "three";
 import { createGlyphAtlas, GLYPH_CELL_HEIGHT, GLYPH_CELL_WIDTH } from "./glyph-atlas";
+import { structureDefines, type StructureSource } from "./structural-legibility";
 
 const VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
@@ -26,11 +33,19 @@ const FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
 
   uniform sampler2D uScene;
+  uniform sampler2D uStructureMap;
   uniform sampler2D uGlyphs;
   uniform vec2 uGrid;
   uniform float uGlyphCount;
+  uniform float uGlyphRows;
+  uniform float uTonePiso;
+  uniform float uStructure;
+  uniform float uMaskOnly;
+  uniform float uSource;
 
   varying vec2 vUv;
+
+${structureDefines()}
 
   void main() {
     vec2 cell = floor(vUv * uGrid);
@@ -40,34 +55,99 @@ const FRAGMENT_SHADER = /* glsl */ `
     // O alvo de renderizacao guarda luz linear. A densidade do glifo precisa
     // seguir o brilho percebido, entao a amostra e convertida para sRGB antes
     // de virar luminancia.
-    vec3 linear = max(texture2D(uScene, sceneUv).rgb, 0.0);
+    vec4 cena = texture2D(uScene, sceneUv);
+    vec3 linear = max(cena.rgb, 0.0);
     vec3 src = pow(linear, vec3(1.0 / 2.2));
+
+    // Familia de material da celula. Viaja no alfa do alvo da cena, que ate
+    // aqui era constante: nenhum material e transparente. A base vale alfa 1,
+    // que e o que o limpo e todo material que nao escreve alfa ja produzem —
+    // terreno, rampas e patamares caem na tabela global sem nenhum codigo.
+    float familia = clamp(floor((1.0 - cena.a) * 255.0 + 0.5), 0.0, uGlyphRows - 1.0);
     float lum = dot(src, vec3(0.2126, 0.7152, 0.0722));
 
-    // Espalha a faixa baixa: o mundo e escuro e a leitura acontece ali.
-    float shaped = clamp(pow(lum, 0.75) * 1.35, 0.0, 1.0);
+    // Pe da curva, e depois espalha a faixa baixa.
+    //
+    // O alvo era de 8 bits e guardava luz linear: tudo abaixo de 1/255 virava
+    // zero exato. Em luminancia percebida isso e um degrau em 0,078 — o mundo
+    // tinha um pe duro nesse valor sem ninguem o ter escolhido. Com meia
+    // precisao esse chao desapareceu e a faixa de baixo passou a existir, o que
+    // era o objetivo; mas com ela veio granulado fraco no longe, que a vista le
+    // como ruido e nao como lugar.
+    //
+    // O pe volta, agora escolhido e muito mais baixo: guarda o que a meia
+    // precisao trouxe e corta so o pedestal. Zero devolve a faixa inteira; 0,078
+    // reproduz o comportamento de 8 bits.
+    float acima = max(lum - uTonePiso, 0.0) / max(1.0 - uTonePiso, 0.000001);
+    float shaped = clamp(pow(acima, 0.75) * 1.35, 0.0, 1.0);
+
+    // ── Reforco estrutural ────────────────────────────────────────────────
+    // Uma leitura so: o sinal ja veio calculado por celula, com o alcance
+    // aplicado. r = tudo, g = so silhueta e degrau, b = so vinco e canto.
+    vec3 mapa = texture2D(uStructureMap, sceneUv).rgb * EST_TETO;
+    float escolhido = uSource < 0.5 ? mapa.r : (uSource < 1.5 ? mapa.g : mapa.b);
+    float estrutura = escolhido * uStructure;
+
+    // Mistura por complemento: celula clara quase nao muda — nada de halo —, e
+    // celula quase preta sobe o bastante para existir.
+    shaped = min(1.0, shaped + estrutura * (1.0 - shaped));
 
     float index = floor(min(shaped * uGlyphCount, uGlyphCount - 1.0));
-    vec2 glyphUv = vec2((index + inCell.x) / uGlyphCount, 1.0 - inCell.y);
+    // Uma linha do atlas por familia. Com uma linha so, isto e exatamente
+    // 1.0 - inCell.y: a familia base le a mesma rampa de sempre.
+    vec2 glyphUv = vec2(
+      (index + inCell.x) / uGlyphCount,
+      (familia + 1.0 - inCell.y) / uGlyphRows
+    );
     float mask = texture2D(uGlyphs, glyphUv).a;
 
     // A densidade do glifo ja carrega a luminancia. A cor mantem o matiz
     // legivel em vez de escurecer junto, para que materia e distancia sejam
     // distinguiveis por dois canais e nao apenas por brilho.
-    float peak = max(src.r, max(src.g, src.b));
-    vec3 hue = peak > 0.001 ? src / peak : vec3(0.0);
+    // O matiz sai da luz **linear**, e nao da amostra ja com gama. A curva de
+    // gama comprime a razao entre canais quase para metade: uma matiz de 0,22 de
+    // amplitude chegava ao ecra como 0,11, e foi por isso que a primeira
+    // calibracao de cor ficou invisivel. Tirando o matiz antes da curva, a
+    // cromaticidade que o material declara e a que aparece.
+    //
+    // A luminancia continua a vir de shaped, que e calculado com gama: quem
+    // decide o brilho e a densidade do glifo, como sempre.
+    float peak = max(linear.r, max(linear.g, linear.b));
+    vec3 hue = peak > 0.000001 ? linear / peak : vec3(0.0);
     vec3 color = hue * mix(0.45, 1.0, shaped);
+
+    if (uMaskOnly > 0.5) {
+      // Diagnostico: so o sinal detectado, sem a cena por baixo.
+      float ind = floor(min(escolhido / EST_TETO * uGlyphCount, uGlyphCount - 1.0));
+      vec2 uvm = vec2((ind + inCell.x) / uGlyphCount, (1.0 - inCell.y) / uGlyphRows);
+      float m = texture2D(uGlyphs, uvm).a;
+      gl_FragColor = vec4(vec3(0.55, 0.78, 1.0) * m, 1.0);
+      return;
+    }
 
     gl_FragColor = vec4(color * mask, 1.0);
   }
 `;
 
 export type AsciiPass = {
-  render: (renderer: WebGLRenderer, source: WebGLRenderTarget) => void;
+  render: (renderer: WebGLRenderer, source: WebGLRenderTarget, structureMap: Texture) => void;
   /** Celula em pixels do dispositivo: o atlas e refeito quando ela muda. */
   setGrid: (columns: number, rows: number, cellWidth: number, cellHeight: number) => void;
+  setStructureEnabled: (enabled: boolean) => void;
+  /** Diagnostico: mostra so a mascara estrutural. */
+  setStructureMask: (enabled: boolean) => void;
+  /** Diagnostico: isola uma parte do sinal. */
+  setStructureSource: (source: StructureSource) => void;
   dispose: () => void;
 };
+
+/**
+ * Pe da curva de tom, em luminancia percebida. Ver a nota no shader: e a
+ * escolha que substitui o degrau que os 8 bits impunham em 0,078.
+ */
+const TONE_FLOOR = 0.03;
+
+const SOURCE_CODE: Record<StructureSource, number> = { todas: 0, silhueta: 1, vinco: 2 };
 
 export function createAsciiPass(): AsciiPass {
   let atlas = createGlyphAtlas(GLYPH_CELL_WIDTH, GLYPH_CELL_HEIGHT);
@@ -75,9 +155,15 @@ export function createAsciiPass(): AsciiPass {
   const material = new ShaderMaterial({
     uniforms: {
       uScene: { value: null as Texture | null },
+      uStructureMap: { value: null as Texture | null },
       uGlyphs: { value: atlas.texture },
       uGrid: { value: new Vector2(1, 1) },
       uGlyphCount: { value: atlas.glyphCount },
+      uGlyphRows: { value: atlas.rowCount },
+      uTonePiso: { value: TONE_FLOOR },
+      uStructure: { value: 1 },
+      uMaskOnly: { value: 0 },
+      uSource: { value: 0 },
     },
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
@@ -94,8 +180,9 @@ export function createAsciiPass(): AsciiPass {
   const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
   return {
-    render(renderer, source) {
+    render(renderer, source, structureMap) {
       material.uniforms.uScene!.value = source.texture;
+      material.uniforms.uStructureMap!.value = structureMap;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
     },
@@ -107,6 +194,16 @@ export function createAsciiPass(): AsciiPass {
       atlas = createGlyphAtlas(cellWidth, cellHeight);
       material.uniforms.uGlyphs!.value = atlas.texture;
       material.uniforms.uGlyphCount!.value = atlas.glyphCount;
+      material.uniforms.uGlyphRows!.value = atlas.rowCount;
+    },
+    setStructureEnabled(enabled) {
+      material.uniforms.uStructure!.value = enabled ? 1 : 0;
+    },
+    setStructureMask(enabled) {
+      material.uniforms.uMaskOnly!.value = enabled ? 1 : 0;
+    },
+    setStructureSource(source) {
+      material.uniforms.uSource!.value = SOURCE_CODE[source];
     },
     dispose() {
       geometry.dispose();
