@@ -737,8 +737,15 @@ guarda — é a obrigatoriedade dele.
 | Correr os comandos já existentes (`npm ci`, `npm test`, `npm run build`, `npm run simulate`) | Comandos próprios do CI | Se o CI corre algo que a máquina de quem desenvolve não corre, o CI vira uma segunda verdade. Aqui, uma falha no CI reproduz-se localmente com o mesmo comando. |
 | `npm ci`, não `npm install` | `npm install` | `npm ci` obedece ao `package-lock.json` e falha se ele divergir do `package.json`. Uma dependência introduzida sem travar não passa. |
 | Disparo em `push` **e** em `pull_request` | Só em `pull_request` | Boa parte do trabalho deste projeto acontece em branches sem PR aberto. Sem o disparo em `push`, o guarda documental ficaria cego exatamente onde o risco vive. |
-| `actions/checkout@v4` e `actions/setup-node@v4` fixadas por etiqueta maior | Fixar por SHA completo | SHA é mais seguro contra uma etiqueta reescrita, mas obriga a manutenção manual a cada correção de segurança. Num projeto de um só responsável, a etiqueta é o equilíbrio assumido — **e assumido é a palavra**: são código de terceiros a correr sobre o repositório. Decisão humana de 21/08/2026. |
+| `actions/checkout@v5` e `actions/setup-node@v5` fixadas por etiqueta maior | Fixar por SHA completo | SHA é mais seguro contra uma etiqueta reescrita, mas obriga a manutenção manual a cada correção de segurança. Num projeto de um só responsável, a etiqueta é o equilíbrio assumido — **e assumido é a palavra**: são código de terceiros a correr sobre o repositório. Decisão humana de 21/08/2026. |
 | Nenhuma dependência npm nova | Playwright agora, junto com o CI | Instalar um navegador no CI é a segunda metade do item, e é condição de paragem das `AGENT_RULES` §11/§21. Fica para 1.4.2, com autorização própria, para não misturar "o CI passou a existir" com "o CI passou a instalar um navegador". |
+
+**Por que v5 e não v4.** A primeira execução ficou verde com as `@v4`, mas o
+registro trouxe um aviso: elas visam o Node 20, que o GitHub está descontinuando,
+e o *runner* já as forçava a correr em Node 24. Hoje é aviso; quando a
+compatibilidade forçada acabar, o CI quebraria sozinho, sem nada no projeto ter
+mudado. As `@v5` visam o Node 24. O comportamento do CI não muda — mesmos passos,
+mesmos comandos. Decisão humana de 21/08/2026, sobre o registro da execução nº 1.
 
 **O que este CI não faz.** Não mede desempenho, não compara pixels, não publica
 nada, não toca no ambiente de ninguém. Não há segredos, nem credenciais, nem
