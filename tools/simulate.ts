@@ -1,4 +1,4 @@
-// Stub da Fase 0.
+// Stub honesto: continua sem nada a simular.
 //
 // O Plano §7 exige que os quatro comandos (dev, test, build, simulate) existam
 // desde o congelamento do contexto. Nao ha o que simular ainda: o relogio
@@ -7,7 +7,7 @@
 // existirem (Plano §5.2, EXPERIMENTOS_ABERTOS.md).
 
 console.log("Ecos do Ultimo Eon — simulate");
-console.log("Fase ativa: 0 (congelamento do contexto)");
+console.log("Fase ativa: 1.4 (integracao continua)");
 console.log("");
 console.log("Nao ha simulacao a executar nesta fase.");
 console.log("Sem relogio deterministico, sem agentes, sem memoria causal.");

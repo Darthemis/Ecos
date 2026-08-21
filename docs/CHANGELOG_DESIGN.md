@@ -55,6 +55,32 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 - **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
 - **Impacto no código:** nenhum. A decisão foi não alterar.
 
+## 2026-08-21 — Fase 1.4.1: a guarda documental passa a ser obrigatória
+
+- **Decisão afetada:** nenhuma decisão de design muda. Muda a garantia de que as
+  decisões fechadas não podem ser alteradas em silêncio.
+- **Antes:** `tests/canonical-baseline.test.ts` comparava o SHA-256 do GDD e do
+  Plano com `docs/canonical-hashes.json` desde a Fase 0 — mas só corria se alguém
+  se lembrasse de o correr. Um agente que alterasse um documento canônico não
+  encontrava resistência mecânica nenhuma.
+- **Depois:** `.github/workflows/ci.yml` corre `npm ci`, `npm test`,
+  `npm run build` e `npm run simulate` a cada envio e a cada pull request, num
+  Ubuntu limpo com Node 22. São exatamente os comandos que o `package.json` já
+  define: uma falha no CI reproduz-se localmente com o mesmo comando.
+- **Nenhuma dependência npm nova.** Entram duas *actions* de terceiros
+  (`actions/checkout@v4`, `actions/setup-node@v4`), fixadas por etiqueta maior e
+  não por SHA — decisão humana registrada em `DECISOES_TECNICAS.md`, com o custo
+  assumido por escrito.
+- **Fica de fora, deliberadamente:** a captura determinista em navegador real,
+  que exige o Playwright e é condição de paragem das `AGENT_RULES` §11/§21.
+  É a Fase 1.4.2, com autorização própria.
+- **Também neste passo:** o rótulo de fase, que estava errado em dois lugares —
+  o README dizia `Fase 1.3` já concluída, e `tools/simulate.ts` ainda imprimia
+  `Fase ativa: 0`.
+- **Aprovação humana:** responsável, 21/08/2026.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+- **Impacto no código de jogo:** nenhum. Nada em `src/` foi tocado.
+
 ## 2026-08-21 — Fase 1.3: a branch padrão apontava para a versão reprovada
 
 - **Decisão afetada:** governança do repositório. Nenhuma decisão de design muda.

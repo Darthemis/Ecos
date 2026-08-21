@@ -8,12 +8,12 @@
 
 ## FASE ATIVA
 
-**Fase 1.3 — governança e documentos.** A camada perceptiva está construída e
+**Fase 1.4 — integração contínua.** A camada perceptiva está construída e
 aguarda o Portão 1. O que falta antes da Fase 2 está numerado em passos pequenos,
-cada um com avaliação humana própria: documentos e branches (1.3), integração
-contínua (1.4), corpo e cor das fontes de luz (1.5), variação tonal por estrutura
-(1.6), os chãos (1.7), o Portão 1 (1.8) e o congelamento da camada perceptiva
-(1.9).
+cada um com avaliação humana própria: documentos e branches (1.3, concluída),
+integração contínua (1.4), corpo e cor das fontes de luz (1.5), variação tonal
+por estrutura (1.6), os chãos (1.7), o Portão 1 (1.8) e o congelamento da camada
+perceptiva (1.9).
 
 **A Fase 2 do Plano §7 — *Pulso e consequência* — ainda não começou.** Não existem
 Cartas de Intenção, memória causal, NPCs, IA, inventário, Recomeço nem as quatro
@@ -109,6 +109,12 @@ npm run simulate # ferramenta de simulação acelerada (stub até haver relógio
 ```
 
 Requer Node 20 ou superior. Abra o endereço que o `npm run dev` imprimir e clique na tela: o clique captura o mouse e libera o áudio, que o navegador não inicia sem um gesto.
+
+A cada envio e a cada pull request, `.github/workflows/ci.yml` corre `npm ci`,
+`npm test`, `npm run build` e `npm run simulate` num Ubuntu limpo com Node 22.
+Como `npm test` inclui a guarda documental, alterar um documento canônico sem
+atualizar `docs/canonical-hashes.json` quebra o envio — que é exatamente o que
+as `AGENT_RULES.md` exigem.
 
 ### Controles
 
