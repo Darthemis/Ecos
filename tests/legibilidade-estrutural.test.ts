@@ -257,8 +257,13 @@ describe("alcance e oclusão", () => {
 
 describe("aplicação do reforço", () => {
   it("não inventa matiz para uma célula sem cor própria", () => {
+    // A regra e a mesma desde a Fase 2.1A: o matiz vem sempre da propria celula,
+    // e uma celula preta permanece preta. Na Fase 1.2 mudou apenas **de onde**
+    // sai — da luz linear em vez da amostra ja com gama, porque a curva
+    // comprimia a cromaticidade quase para metade. A guarda contra inventar
+    // matiz de outra fonte continua a valer por inteiro.
     const passe = readFileSync("src/render/ascii-pass.ts", "utf8");
-    expect(passe).toContain("vec3 hue = peak > 0.001 ? src / peak : vec3(0.0);");
+    expect(passe).toContain("vec3 hue = peak > 0.000001 ? linear / peak : vec3(0.0);");
     expect(passe).not.toMatch(/matizEstrutural|uAmbientTint|setAmbientTint|corDe\(/);
   });
 
@@ -288,7 +293,7 @@ describe("aplicação do reforço", () => {
 
     material.onBeforeCompile(shader, {} as WebGLRenderer);
     expect(shader.vertexShader).toContain("vEchoWorld");
-    expect(shader.fragmentShader).toContain("totalEmissiveRadiance += uEchoColor");
+    expect(shader.fragmentShader).toContain("totalEmissiveRadiance += ecoCor * eco * uEchoStrength;");
     expect(shader.fragmentShader).toContain("vec3 outgoingLight = ecosStableDiffuse + totalEmissiveRadiance;");
   });
 

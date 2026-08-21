@@ -38,6 +38,7 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec2 uGrid;
   uniform float uGlyphCount;
   uniform float uGlyphRows;
+  uniform float uTonePiso;
   uniform float uStructure;
   uniform float uMaskOnly;
   uniform float uSource;
@@ -65,8 +66,20 @@ ${structureDefines()}
     float familia = clamp(floor((1.0 - cena.a) * 255.0 + 0.5), 0.0, uGlyphRows - 1.0);
     float lum = dot(src, vec3(0.2126, 0.7152, 0.0722));
 
-    // Espalha a faixa baixa: o mundo e escuro e a leitura acontece ali.
-    float shaped = clamp(pow(lum, 0.75) * 1.35, 0.0, 1.0);
+    // Pe da curva, e depois espalha a faixa baixa.
+    //
+    // O alvo era de 8 bits e guardava luz linear: tudo abaixo de 1/255 virava
+    // zero exato. Em luminancia percebida isso e um degrau em 0,078 — o mundo
+    // tinha um pe duro nesse valor sem ninguem o ter escolhido. Com meia
+    // precisao esse chao desapareceu e a faixa de baixo passou a existir, o que
+    // era o objetivo; mas com ela veio granulado fraco no longe, que a vista le
+    // como ruido e nao como lugar.
+    //
+    // O pe volta, agora escolhido e muito mais baixo: guarda o que a meia
+    // precisao trouxe e corta so o pedestal. Zero devolve a faixa inteira; 0,078
+    // reproduz o comportamento de 8 bits.
+    float acima = max(lum - uTonePiso, 0.0) / max(1.0 - uTonePiso, 0.000001);
+    float shaped = clamp(pow(acima, 0.75) * 1.35, 0.0, 1.0);
 
     // ── Reforco estrutural ────────────────────────────────────────────────
     // Uma leitura so: o sinal ja veio calculado por celula, com o alcance
@@ -91,8 +104,16 @@ ${structureDefines()}
     // A densidade do glifo ja carrega a luminancia. A cor mantem o matiz
     // legivel em vez de escurecer junto, para que materia e distancia sejam
     // distinguiveis por dois canais e nao apenas por brilho.
-    float peak = max(src.r, max(src.g, src.b));
-    vec3 hue = peak > 0.001 ? src / peak : vec3(0.0);
+    // O matiz sai da luz **linear**, e nao da amostra ja com gama. A curva de
+    // gama comprime a razao entre canais quase para metade: uma matiz de 0,22 de
+    // amplitude chegava ao ecra como 0,11, e foi por isso que a primeira
+    // calibracao de cor ficou invisivel. Tirando o matiz antes da curva, a
+    // cromaticidade que o material declara e a que aparece.
+    //
+    // A luminancia continua a vir de shaped, que e calculado com gama: quem
+    // decide o brilho e a densidade do glifo, como sempre.
+    float peak = max(linear.r, max(linear.g, linear.b));
+    vec3 hue = peak > 0.000001 ? linear / peak : vec3(0.0);
     vec3 color = hue * mix(0.45, 1.0, shaped);
 
     if (uMaskOnly > 0.5) {
@@ -120,6 +141,12 @@ export type AsciiPass = {
   dispose: () => void;
 };
 
+/**
+ * Pe da curva de tom, em luminancia percebida. Ver a nota no shader: e a
+ * escolha que substitui o degrau que os 8 bits impunham em 0,078.
+ */
+const TONE_FLOOR = 0.03;
+
 const SOURCE_CODE: Record<StructureSource, number> = { todas: 0, silhueta: 1, vinco: 2 };
 
 export function createAsciiPass(): AsciiPass {
@@ -133,6 +160,7 @@ export function createAsciiPass(): AsciiPass {
       uGrid: { value: new Vector2(1, 1) },
       uGlyphCount: { value: atlas.glyphCount },
       uGlyphRows: { value: atlas.rowCount },
+      uTonePiso: { value: TONE_FLOOR },
       uStructure: { value: 1 },
       uMaskOnly: { value: 0 },
       uSource: { value: 0 },

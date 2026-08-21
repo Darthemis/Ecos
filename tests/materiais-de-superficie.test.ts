@@ -285,3 +285,96 @@ describe("a chave de programa distingue quem injetou o padrao", () => {
     }
   });
 });
+
+// Cor da Fase 1.2. A regra nao e "tem cor": e "tem materia reconhecivel sem
+// virar faixa cromatica". A tentativa monolitica foi reprovada por expor
+// grandes areas de marrom e creme, e estes limites existem para isso nao voltar
+// por deriva de calibracao.
+describe("matiz por familia", () => {
+  const cromaticidade = (m: readonly [number, number, number]) => Math.max(...m) - Math.min(...m);
+
+  it("a base e exatamente neutra: o caminho pisavel nao ganha cor", () => {
+    expect(SURFACE_MATERIALS.base.matiz).toEqual([1, 1, 1]);
+    expect(cromaticidade(SURFACE_MATERIALS.base.matiz)).toBe(0);
+  });
+
+  it("cada familia tem a sua matiz, e nenhuma repete", () => {
+    const cores = SURFACE_MATERIAL_ORDER.map((id) => SURFACE_MATERIALS[id].matiz.join(","));
+    expect(new Set(cores).size).toBe(cores.length);
+  });
+
+  it("nenhuma matiz e saturada: a cor e um viés, nao uma faixa", () => {
+    for (const id of SURFACE_MATERIAL_ORDER) {
+      // O teto e 0,55, depois de duas calibracoes medidas como fracas demais e de
+      // o responsavel pedir separacao ao nivel das referencias visuais. O que
+      // reprovou a tentativa monolitica nao foi saturacao — foi cor turva, com a
+      // luminancia comida junto. Aqui a luminancia continua a vir do glifo, e
+      // este teto impede que o matiz vire tinta em vez de materia.
+      expect(cromaticidade(SURFACE_MATERIALS[id].matiz)).toBeLessThanOrEqual(0.55);
+    }
+  });
+
+  it("as matizes ficam altas, para nao roubarem luminancia", () => {
+    // A luminancia da superficie vem da luz; a matiz so deve inclinar a cor.
+    for (const id of SURFACE_MATERIAL_ORDER) {
+      for (const canal of SURFACE_MATERIALS[id].matiz) {
+        expect(canal).toBeGreaterThanOrEqual(0.45);
+        expect(canal).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("as tres familias separam-se pelo angulo do matiz, nao pela quantidade", () => {
+    const m = (id: "rock" | "ruin" | "monolith") => SURFACE_MATERIALS[id].matiz;
+    const azulMenosVermelho = (id: "rock" | "ruin" | "monolith") => m(id)[2] - m(id)[0];
+
+    // Ruina e morna; pedra e fria. Sao os dois polos.
+    expect(azulMenosVermelho("ruin")).toBeLessThan(-0.2);
+    expect(azulMenosVermelho("rock")).toBeGreaterThan(0.2);
+
+    // O monolito nao e "mais azul que a pedra": e violeta. O que o distingue e o
+    // verde afundado entre os extremos — nao pertence ao lugar, e le-se logo.
+    const violeta = (id: "rock" | "ruin" | "monolith") => (m(id)[0] + m(id)[2]) / 2 - m(id)[1];
+    expect(violeta("monolith")).toBeGreaterThan(0.15);
+    expect(violeta("rock")).toBeLessThan(0.05);
+    expect(violeta("ruin")).toBeLessThan(0.05);
+  });
+
+  it("o shader aplica a matiz, e desliga com o padrao", () => {
+    expect(PADRAO).toContain("diffuseColor.rgb *= mix( vec3( 1.0 ), uPadraoMatiz, uPadraoLigado );");
+  });
+});
+
+describe("faixa dinamica da Fase 1.2", () => {
+  const ASCII = readFileSync("src/render/ascii-pass.ts", "utf8");
+  const JOGO = readFileSync("src/app/game.ts", "utf8");
+
+  it("o alvo da cena guarda meia precisao, e nao 8 bits", () => {
+    expect(JOGO).toContain("type: HalfFloatType,");
+  });
+
+  it("o pe da curva e escolhido, e nao imposto pelo formato", () => {
+    // 0,078 em luminancia percebida e o degrau que 1/255 de luz linear impunha.
+    // O pe atual tem de ser menor: senao a meia precisao nao serviu de nada.
+    const piso = /const TONE_FLOOR = ([\d.]+);/.exec(ASCII)?.[1];
+    expect(piso).toBeDefined();
+    expect(Number(piso)).toBeGreaterThan(0);
+    expect(Number(piso)).toBeLessThan(Math.pow(1 / 255, 1 / 2.2));
+  });
+
+  it("o matiz sai da luz linear, e nao da amostra ja com gama", () => {
+    // A curva de gama comprime a razao entre canais quase para metade. Tirar o
+    // matiz depois dela foi o que fez a primeira calibracao de cor chegar ao
+    // ecra como 7,1/255 — medida, e invisivel a olho humano. Antes da curva,
+    // a mesma matiz mede 26,2/255.
+    expect(ASCII).toContain("float peak = max(linear.r, max(linear.g, linear.b));");
+    expect(ASCII).toContain("vec3 hue = peak > 0.000001 ? linear / peak : vec3(0.0);");
+    // E a luminancia continua a vir do glifo, nao do matiz.
+    expect(ASCII).toContain("vec3 color = hue * mix(0.45, 1.0, shaped);");
+  });
+
+  it("o pe entra antes do ganho, e nao depois", () => {
+    expect(ASCII).toContain("float acima = max(lum - uTonePiso, 0.0) / max(1.0 - uTonePiso, 0.000001);");
+    expect(ASCII).toContain("float shaped = clamp(pow(acima, 0.75) * 1.35, 0.0, 1.0);");
+  });
+});

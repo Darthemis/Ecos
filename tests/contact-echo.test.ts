@@ -171,10 +171,23 @@ describe("ondulacao da borda", () => {
 describe("cor do Eco", () => {
   const FONTE = readFileSync("src/render/contact-echo-material.ts", "utf8");
 
-  it("e neutra: o eco nao cria faixa cromatica propria", () => {
-    expect(FONTE).toContain(
-      "const ECHO_COLOR = new Vector3(ECHO_LUMINANCE, ECHO_LUMINANCE, ECHO_LUMINANCE);",
-    );
+  it("o eco nao tem cor propria: toma a da superficie onde esta", () => {
+    // Era um cinza fixo; antes disso, azul. Agora nao e nenhuma cor: e o matiz
+    // normalizado da propria superficie, como o piso dos topos ja fazia. Quando
+    // o chao tiver familias, o eco segue sozinho.
+    expect(FONTE).toContain("vec3 ecoMatiz = ecoPico > 0.000001 ? diffuseColor.rgb / ecoPico : vec3( 0.0 );");
+    expect(FONTE).not.toContain("uEchoColor");
+    expect(FONTE).not.toContain("ECHO_COLOR");
+  });
+
+  it("mas conserva a luminancia calibrada, e nao a da superficie", () => {
+    // Sem isto, um chao claro tornaria o eco mais forte e um escuro mais fraco:
+    // as tres intensidades aprovadas deixariam de significar o que significam.
+    expect(FONTE).toContain("vec3 ecoCor = ecoMatiz * ( uEchoLuminance / max( ecoMatizLum, 0.000001 ) );");
+    const declarada = /const ECHO_LUMINANCE = ([^;]+);/.exec(FONTE)?.[1];
+    expect(declarada).toBeDefined();
+    // eslint-disable-next-line no-new-func
+    expect(Function(`return ${declarada}`)()).toBe(0.2126 * 0.62 + 0.7152 * 0.66 + 0.0722 * 0.78);
   });
 
   it("conserva exatamente a luminancia da cor azulada anterior", () => {
@@ -188,7 +201,7 @@ describe("cor do Eco", () => {
   it("intensidade, alcance e ondulacao nao foram tocados", () => {
     expect(FONTE).toContain("const ECHO_GRAIN = 0.45;");
     expect(FONTE).toContain("const ECHO_NOISE_SCALE = 1.2;");
-    expect(FONTE).toContain("totalEmissiveRadiance += uEchoColor * eco * uEchoStrength;");
+    expect(FONTE).toContain("totalEmissiveRadiance += ecoCor * eco * uEchoStrength;");
   });
 });
 

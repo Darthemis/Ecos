@@ -7,7 +7,7 @@
 // atraves de paredes ou relevos.
 
 import type { MeshLambertMaterial, WebGLProgramParametersWithUniforms } from "three";
-import { Vector2, Vector3, Vector4 } from "three";
+import { Vector2, Vector4 } from "three";
 import { contactReach, MAX_CONTACTS, type ContactFootprint } from "../world/contact-echo";
 
 /**
@@ -33,20 +33,16 @@ const ECHO_CORNER_MAX = 0.9;
 const ECHO_NOISE_SCALE = 1.2;
 
 /**
- * Cor do eco. Era (0.62, 0.66, 0.78) — azulada, e o azul aparecia como linhas
- * proprias junto aos objetos, uma faixa cromatica que o eco nao deveria criar.
+ * Luminancia do eco. Herdada da cor original (0.62, 0.66, 0.78) pelos pesos
+ * Rec. 709, e conservada desde entao por duas mudancas de matiz: primeiro para
+ * cinza neutro, agora para o matiz da propria superficie.
  *
- * O cinza abaixo tem exatamente a luminancia daquela cor, pelos pesos Rec. 709
- * que o passe ASCII ja usa. Como o eco entra somando luz linear, preservar a
- * luminancia do vetor preserva a luminancia de cada pixel: muda o matiz, nao a
- * quantidade de luz. Intensidade, formato, alcance e ondulacao ficam intactos.
- *
- * (O cinza que igualaria a luminancia medida depois da curva de gama seria
- * 0.659621 — 0.14 de um nivel de 255 de diferenca, abaixo da quantizacao do
- * alvo. As duas definicoes concordam, entao nao ha escolha a fazer aqui.)
+ * E ela, e nao a cor, que carrega a calibracao. Como o eco entra somando luz
+ * linear e a luminancia e um funcional linear, fixar este numero preserva a
+ * luminancia de cada pixel: muda o matiz, nunca a quantidade de luz. As tres
+ * intensidades aprovadas continuam a valer o que valiam.
  */
 const ECHO_LUMINANCE = 0.2126 * 0.62 + 0.7152 * 0.66 + 0.0722 * 0.78;
-const ECHO_COLOR = new Vector3(ECHO_LUMINANCE, ECHO_LUMINANCE, ECHO_LUMINANCE);
 
 export type ContactEchoUniforms = {
   setFootprints: (footprints: readonly ContactFootprint[]) => void;
@@ -128,7 +124,19 @@ for ( int i = 0; i < ECHO_MAX_CONTACTS; i ++ ) {
   eco = max( eco, fall );
 }
 
-totalEmissiveRadiance += uEchoColor * eco * uEchoStrength;
+// O eco nao tem cor propria: toma a da superficie onde esta. E o que a regra
+// deste modulo sempre disse — nao e luz, e o terreno que se sombreia — e o que
+// o piso dos topos ja fazia. Quando o chao tiver familias, o eco segue sozinho.
+//
+// A matiz e normalizada pelo pico e depois reposta na luminancia calibrada, para
+// que so o matiz mude: as tres intensidades aprovadas continuam a valer o que
+// valiam.
+float ecoPico = max( diffuseColor.r, max( diffuseColor.g, diffuseColor.b ) );
+vec3 ecoMatiz = ecoPico > 0.000001 ? diffuseColor.rgb / ecoPico : vec3( 0.0 );
+float ecoMatizLum = dot( ecoMatiz, vec3( 0.2126, 0.7152, 0.0722 ) );
+vec3 ecoCor = ecoMatiz * ( uEchoLuminance / max( ecoMatizLum, 0.000001 ) );
+
+totalEmissiveRadiance += ecoCor * eco * uEchoStrength;
 `;
 
 /**
@@ -152,7 +160,7 @@ export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUni
     uEchoGrain: { value: ECHO_GRAIN },
     uEchoCornerMax: { value: ECHO_CORNER_MAX },
     uEchoNoiseScale: { value: ECHO_NOISE_SCALE },
-    uEchoColor: { value: ECHO_COLOR },
+    uEchoLuminance: { value: ECHO_LUMINANCE },
   };
 
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
@@ -175,13 +183,19 @@ export function attachContactEcho(material: MeshLambertMaterial): ContactEchoUni
       "uniform float uEchoGrain;",
       "uniform float uEchoCornerMax;",
       "uniform float uEchoNoiseScale;",
-      "uniform vec3 uEchoColor;",
+      "uniform float uEchoLuminance;",
       FRAGMENT_HELPERS,
       shader.fragmentShader,
     ]
       .join("\n")
       .replace(FRAGMENT_HOOK, FRAGMENT_INJECTION);
   };
+
+  // Identidade propria na chave de programa, pelo mesmo motivo da Fase 1.1.1:
+  // o Three partilha programas entre materiais cuja chave coincide, e o texto de
+  // um fecho nao distingue quem injetou o que.
+  const previousKey = material.customProgramCacheKey.bind(material);
+  material.customProgramCacheKey = () => `${previousKey()}|ecos-contact-echo-v1`;
 
   // O material precisa de emissao para que totalEmissiveRadiance seja usado.
   material.emissive.setRGB(0, 0, 0);

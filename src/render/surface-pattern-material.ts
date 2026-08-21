@@ -20,6 +20,7 @@ import type {
   WebGLProgramParametersWithUniforms,
   WebGLRenderer,
 } from "three";
+import { Vector3 } from "three";
 import {
   alphaForMaterialIndex,
   SURFACE_MATERIALS,
@@ -65,6 +66,12 @@ float ecosPadrao = padraoNoise( vPadraoMundo * uPadraoEscala );
 // Sempre <= 1: o padrao escurece, nunca acende.
 float ecosFator = mix( 1.0 - uPadraoContraste, 1.0, ecosPadrao );
 diffuseColor.rgb *= mix( 1.0, ecosFator, uPadraoLigado );
+
+// Matiz da familia. Entra antes da iluminacao, e o estabilizador de matiz
+// garante que nenhuma luz a repinta: a cor que chega ao ecra e a que foi
+// declarada. O padrao continua escalar, entao os dois nao se misturam — um mexe
+// em densidade, o outro em cromaticidade.
+diffuseColor.rgb *= mix( vec3( 1.0 ), uPadraoMatiz, uPadraoLigado );
 `;
 
 const ALPHA_HOOK = "#include <opaque_fragment>";
@@ -95,10 +102,11 @@ export function attachSurfacePattern(
   material: MeshLambertMaterial,
   id: SurfaceMaterialId,
 ): PatternHandle {
-  const { escala, contraste } = SURFACE_MATERIALS[id];
+  const { escala, contraste, matiz } = SURFACE_MATERIALS[id];
   const uniforms = {
     uPadraoEscala: { value: escala },
     uPadraoContraste: { value: contraste },
+    uPadraoMatiz: { value: new Vector3(matiz[0], matiz[1], matiz[2]) },
     uPadraoAlfa: { value: alphaForMaterialIndex(surfaceMaterialIndex(id)) },
     uPadraoLigado: { value: 1 },
   };
@@ -131,6 +139,7 @@ export function attachSurfacePattern(
       "varying vec3 vPadraoMundo;",
       "uniform float uPadraoEscala;",
       "uniform float uPadraoContraste;",
+      "uniform vec3 uPadraoMatiz;",
       "uniform float uPadraoAlfa;",
       "uniform float uPadraoLigado;",
       FRAGMENT_HELPERS,

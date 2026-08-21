@@ -1,7 +1,15 @@
 // Montagem do laço. Une entrada, simulação, percepção, renderização, áudio e
 // diagnóstico sem que nenhum deles conheça o outro diretamente.
 
-import { DepthFormat, DepthTexture, NearestFilter, UnsignedIntType, WebGLRenderer, WebGLRenderTarget } from "three";
+import {
+  DepthFormat,
+  DepthTexture,
+  HalfFloatType,
+  NearestFilter,
+  UnsignedIntType,
+  WebGLRenderer,
+  WebGLRenderTarget,
+} from "three";
 import { planSteps, TICK_SECONDS } from "../core/fixed-step";
 import { createInputSource } from "../core/input";
 import { DEFAULT_COMFORT } from "../core/settings";
@@ -82,7 +90,20 @@ export function startGame(root: HTMLElement): Game {
     depthTexture.format = DepthFormat;
     depthTexture.minFilter = NearestFilter;
     depthTexture.magFilter = NearestFilter;
-    const alvo = new WebGLRenderTarget(w, h, { minFilter: NearestFilter, magFilter: NearestFilter });
+    // Meia precisao, e nao 8 bits. O alvo guarda luz **linear**, e este mundo
+    // vive quase inteiramente abaixo de 1/255 — onde 8 bits colapsam tudo para
+    // zero exato. Era a raiz de varios problemas perceptivos ao mesmo tempo:
+    // celulas estruturais detectadas mas invisiveis, e qualquer nuance de cor
+    // desaparecida antes de chegar ao passe ASCII.
+    //
+    // A filtragem continua por vizinho mais proximo, entao nao e preciso a
+    // extensao de filtragem linear em meia precisao: um texel e uma celula, e
+    // interpolar seria errado de qualquer forma.
+    const alvo = new WebGLRenderTarget(w, h, {
+      minFilter: NearestFilter,
+      magFilter: NearestFilter,
+      type: HalfFloatType,
+    });
     alvo.depthTexture = depthTexture;
     return alvo;
   };
