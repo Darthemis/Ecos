@@ -31,6 +31,76 @@ Sem entrada aqui, a alteração não é válida — mesmo que o código já este
 
 ## Entradas
 
+## 2026-08-20 — Fase 1.2: faixa dinâmica, cor por família e o Eco sem cor própria
+
+- **Decisão afetada:** resolve dois itens de `EXPERIMENTOS_ABERTOS.md` — a faixa
+  dinâmica do alvo de renderização e a semântica de cor das famílias de material.
+  A cor entra como **experiência**, não como decisão fechada: os três matizes são
+  provisórios e continuam a depender de playtest.
+- **Faixa dinâmica.** O alvo passa de 8 bits para meia precisão. Os 8 bits
+  impunham um degrau duro em 0,078 de luminância percebida — 1/255 de luz linear
+  —, exatamente na faixa onde este mundo vive, e **ninguém tinha escolhido esse
+  valor**: era um acidente do formato. Removido o degrau, o longe encheu-se de
+  granulado; o pé da curva voltou, agora escolhido em 0,03, varrido com o
+  instrumento determinista.
+- **Cor por família.** Cada família declara uma matiz. A base — chão, rampas,
+  patamares — fica exatamente neutra: o caminho pisável não ganha cor.
+  Rocha azul-ardósia, ruína ocre, monólito violeta.
+- **O monólito separa-se por ângulo, não por quantidade.** O critério anterior
+  ("mais azul que a pedra") punha-o a competir no mesmo eixo da rocha. O que o
+  define passa a ser o verde afundado entre os extremos: violeta, e não azul.
+- **O Eco perde a cor própria.** Passa a tomar a matiz da superfície onde está,
+  normalizada e reposta na luminância calibrada. É o que a regra do módulo sempre
+  disse — não é luz, é o terreno que se sombreia. Quando o chão tiver famílias em
+  1.3, o eco segue sozinho, sem código novo. As três intensidades aprovadas
+  continuam a valer o que valiam.
+- **Justificativa:** três calibrações, cada uma medida e reprovada pela avaliação
+  visual humana antes da seguinte. 0,085 de amplitude chegou ao ecrã como
+  7,1/255 e foi **invisível a olho humano**; 0,22, com o matiz tirado da luz
+  linear em vez da amostra já com gama, deu 26,2/255; as atuais, com cerca de
+  0,4, dão 51,0/255. O responsável forneceu referências visuais em 20/08/2026 e
+  pediu separação a esse nível.
+- **O que a tentativa monolítica reprovou não foi saturação, foi cor turva** —
+  grandes faixas de marrom e creme com a luminância comida junto. Aqui o preto
+  continua a dominar a tela e a luminância continua a vir inteiramente da
+  densidade do glifo. Os tetos do teste (amplitude ≤ 0,55, canais ≥ 0,45) existem
+  para impedir que a matiz vire tinta em vez de matéria.
+- **Aprovação humana:** responsável, 20/08/2026, após avaliação visual do preview.
+- **GDD atualizado:** não aplicável — GDD, Plano e hashes permanecem intactos.
+- **Impacto no código:** `src/app/game.ts`, `src/render/ascii-pass.ts`,
+  `src/world/surface-material.ts`, `src/render/surface-pattern-material.ts`,
+  `src/render/contact-echo-material.ts` e três arquivos de teste.
+
+## 2026-08-20 — O instrumento de medição estava errado, e o que isso invalidou
+
+- **Decisão afetada:** nenhuma. É a **retratação** de números que eu apresentei
+  como verificados ao longo da Fase 1.1 e da 1.2.
+- **O defeito:** o Playwright grava PNG de **três canais**, e eu li o arquivo
+  decodificado com passo quatro durante toda a sessão. Os canais saíam
+  desalinhados: o que eu chamava de vermelho podia ser o verde do pixel seguinte.
+- **O que fica invalidado:** toda percentagem e todo número de cor que citei.
+  Nomeadamente "desvio médio de 16,6/255" e "amplitude 49,4 contra 49,6", que
+  usei para afirmar que a cor chegava ao ecrã — não chegava, e a avaliação humana
+  viu isso antes da medição.
+- **O que sobrevive:** as comparações byte a byte da captura determinista, que
+  comparam o arquivo cru e não o decodificado; e as conclusões do tipo "zero
+  contra 266 068", porque zero é zero em qualquer passo. A prova de que a matéria
+  por padrão não chegava ao ecrã (Fase 1.1.1) mantém-se.
+- **O que a medição correta mostrou:** sem matiz, o mundo mede **0,0/255** de
+  amplitude cromática — perfeitamente neutro. O "chão azul" que eu diagnostiquei
+  **nunca existiu**: o terreno já passava pelo estabilizador de matiz e a sua
+  textura é cinzenta. Descobri isso porque a minha correção duplicou uma linha
+  que já lá estava.
+- **Segunda sonda inválida, no mesmo período:** para descobrir se havia obstáculo
+  visível numa pose, acendi os materiais dos obstáculos com emissão. Deu zero, e
+  quase concluí que não havia obstáculo nenhum à vista. A sonda é que era
+  inválida: `top-surface-material.ts` zera a emissão depois dela.
+- **Aprovação humana:** não aplicável — é registro de erro, não de decisão.
+- **GDD atualizado:** não aplicável.
+- **Lição:** um instrumento que não é verificado mede o que não se pretende, com
+  a mesma confiança com que mediria o certo. As duas vezes em que a avaliação
+  humana contradisse a minha medição, a avaliação humana estava certa.
+
 ## 2026-08-20 — Fase 1.1.1: a materia por padrao nunca chegou ao ecra
 
 - **Decisao afetada:** nenhuma decisao nova. Esta entrada **corrige uma afirmacao

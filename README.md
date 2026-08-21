@@ -29,6 +29,13 @@ rampas desenhadas como rampas, famílias de material por padrão e densidade de
 glifos, e o Eco de Contato — cor neutra, tamanho condicionado ao objeto e
 formato de caixa arredondada dissolvida em grão.
 
+**Fase 1.2 — faixa dinâmica e cor.** O alvo da cena passou de 8 bits para meia
+precisão: os 8 bits impunham um degrau em 0,078 de luminância percebida,
+exatamente na faixa onde este mundo vive, e ninguém o tinha escolhido. Cada
+família de material ganhou uma matiz — rocha azul-ardósia, ruína ocre, monólito
+violeta —, e o chão, as rampas e os patamares ficam **neutros**. O Eco de Contato
+deixou de ter cor própria: toma a da superfície onde está.
+
 **Fase 1.1.1 — correção:** as famílias de material tinham sido registradas como
 funcionando e **não funcionavam** — nenhum pixel era desenhado com a tabela de
 glifos da sua família, sem erro nem aviso. A causa era a partilha de programas
@@ -46,7 +53,7 @@ O que existe hoje: um percurso de cerca de 120 metros por uma rua de ruínas, em
 
 O teste do Portão 1 foi **adiado deliberadamente**, a pedido do responsável, e será feito junto com o do Portão 2 num único ciclo. Nenhum agente pode declarar qualquer um dos dois aprovado.
 
-**Eco de Contato** (experiência provisória): o que toca o terreno torna minimamente legível o lugar onde o toca — um poço junto da base, mais fraco que o próprio objeto, cinzento neutro, com o tamanho condicionado à base de cada objeto e o contorno dissolvido em grão em vez de terminar numa curva. Não é luz: é o terreno que se sombreia, então paredes o ocultam pelo simples teste de profundidade.
+**Eco de Contato** (experiência provisória): o que toca o terreno torna minimamente legível o lugar onde o toca — um poço junto da base, mais fraco que o próprio objeto, com a cor da superfície onde está, com o tamanho condicionado à base de cada objeto e o contorno dissolvido em grão em vez de terminar numa curva. Não é luz: é o terreno que se sombreia, então paredes o ocultam pelo simples teste de profundidade.
 
 **Matéria por padrão, não por cor.** Cada família de material — hoje pedra, ruína e monólito — tem o seu grão e a sua tabela de glifos. Todas as superfícies continuam neutras: a matéria distingue-se por textura e densidade, nunca por matiz.
 

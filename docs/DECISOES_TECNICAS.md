@@ -624,3 +624,100 @@ Uma prova estatica sobre o texto de um shader nao prova o pixel no ecra. Eu trat
 uma pela outra e escrevi o resultado nos documentos como verificado. Foi
 necessario um instrumento com ruido zero para a diferenca entre "o codigo esta
 certo" e "a coisa funciona" se tornar observavel.
+
+## Fase 1.2 — Faixa dinâmica e cor
+
+### O degrau que ninguém escolheu
+
+O alvo da cena guardava luz **linear** em 8 bits. Tudo abaixo de 1/255 virava
+zero exato — e em luminância percebida isso é um degrau em **0,078**, exatamente
+na faixa onde este mundo vive. Não era uma decisão: era um acidente do formato,
+e estava na origem de vários problemas perceptivos ao mesmo tempo.
+
+Com meia precisão o degrau desaparece e a faixa de baixo passa a existir. Com
+ela veio granulado fraco no longe, que a vista lê como ruído. O pé da curva
+voltou, agora escolhido: `TONE_FLOOR = 0.03`, varrido com a captura determinista.
+
+| pé | células acesas em `brecha-monte` |
+| --- | --- |
+| 0,00 | 10,0% |
+| 0,02 | 9,6% |
+| **0,03** | **8,7%** |
+| 0,05 | 8,0% |
+| 0,078 | 6,3% |
+
+Os 6,3% em 0,078 contra os 6,5% do mundo de 8 bits confirmam o modelo: aquele
+valor reproduz o comportamento antigo.
+
+*(As percentagens desta tabela vêm do decodificador com o defeito de passo
+descrito abaixo. A contagem de células acesas usa só o máximo dos canais, então a
+ordem e as proporções aguentam-se; os valores absolutos podem estar deslocados.)*
+
+### Por que a primeira cor foi invisível
+
+O passe ASCII tirava o matiz de `src = pow(linear, 1/2.2)` — a amostra **já com
+gama**. A curva comprime a razão entre canais quase para metade: uma matiz de
+0,085 de amplitude chegava ao ecrã como 7,1/255.
+
+O matiz passou a sair da luz **linear**. A luminância continua a vir de `shaped`,
+que é calculado com gama: quem decide o brilho é a densidade do glifo, como
+sempre. A cromaticidade que o material declara passa a ser a que aparece.
+
+| calibração | amplitude no ecrã |
+| --- | --- |
+| 0,085, matiz depois da gama | 7,1/255 — invisível |
+| 0,22, matiz antes da gama | 26,2/255 |
+| ~0,4, matiz antes da gama | 51,0/255 |
+
+### Separação por ângulo, não por quantidade
+
+O critério anterior do monólito — "mais azul que a pedra" — punha-o a competir no
+mesmo eixo da rocha. O que o define passa a ser o **verde afundado** entre os
+extremos: violeta, e não azul. Rocha azul-ardósia, ruína ocre, monólito violeta
+separam-se pelo ângulo do matiz.
+
+O que reprovou a tentativa monolítica não foi saturação — foi **cor turva**, com
+a luminância comida junto. Aqui o preto domina a tela e a luminância vem
+inteiramente do glifo. Os tetos do teste (amplitude ≤ 0,55, canais ≥ 0,45)
+existem para impedir que o matiz vire tinta em vez de matéria.
+
+### O Eco sem cor própria
+
+Deixou de ter uma cor constante. Toma o matiz da superfície onde está,
+normalizado pelo pico e **reposto na luminância calibrada** — sem isso, um chão
+claro tornaria o eco mais forte e um escuro mais fraco, e as três intensidades
+aprovadas deixariam de significar o que significam.
+
+É o que a regra do módulo sempre disse: não é luz, é o terreno que se sombreia.
+Quando o chão tiver famílias em 1.3, o eco segue sozinho.
+
+O material do eco ganhou também identidade própria na chave de programa, pelo
+mesmo motivo da Fase 1.1.1.
+
+## O defeito do instrumento de medição
+
+O Playwright grava PNG de **três canais**, e eu li o arquivo decodificado com
+passo quatro durante toda a sessão. Os canais saíam desalinhados: o que eu
+chamava de vermelho podia ser o verde do pixel seguinte. O decodificador expunha
+`channels` corretamente; eu é que o ignorei.
+
+**Invalidado:** toda percentagem e todo número de cor que apresentei como
+verificado. Em particular, o "desvio médio de 16,6/255" com que afirmei que a cor
+chegava ao ecrã — não chegava.
+
+**Sobrevive:** as comparações byte a byte da captura determinista, que comparam o
+arquivo cru; e as conclusões do tipo "zero contra 266 068", porque zero é zero em
+qualquer passo.
+
+**O que a medição correta mostrou:** sem matiz, o mundo mede **0,0/255** de
+amplitude cromática. O "chão azul" que eu diagnostiquei nunca existiu — o terreno
+já passava pelo estabilizador de matiz e a sua textura é cinzenta. Descobri isso
+porque a minha correção duplicou uma linha que já lá estava.
+
+Uma segunda sonda inválida no mesmo período: para saber se havia obstáculo
+visível numa pose, acendi os materiais dos obstáculos com emissão. Deu zero, e
+quase concluí que não havia obstáculo à vista. `top-surface-material.ts` zera a
+emissão depois dela.
+
+Nas duas vezes em que a avaliação visual humana contradisse a minha medição, a
+avaliação humana estava certa.
